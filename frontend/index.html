@@ -16,72 +16,57 @@
 
 <input id="interests" placeholder="coding,music" />
 <button onclick="start()">Start</button>
-<button onclick="next()">Next</button>
+<button onclick="nextUser()">Next</button>
 
 <br><br>
 
-<video id="localVideo" autoplay muted></video>
-<video id="remoteVideo" autoplay></video>
+<video id="localVideo" autoplay muted playsinline></video>
+<video id="remoteVideo" autoplay playsinline></video>
 
 <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 
 <script>
-const socket = io("http://192.168.0.106:5000");
+const socket = io("https://your-backend.onrender.com"); // 🔥 CHANGE THIS
 
 let localStream;
 let peer;
 let partnerId;
 
-// 🎥 Get camera
+// 🎥 Start
 async function start() {
   try {
     localStream = await navigator.mediaDevices.getUserMedia({
       video: true,
       audio: true
     });
-
-    console.log("✅ Camera + mic granted");
-
   } catch (err) {
-    console.error("Primary error:", err.name);
-
-    if (err.name === "NotAllowedError") {
-      alert("Permission denied. Please allow camera & microphone.");
-      return;
-    }
-
-    if (err.name === "NotFoundError") {
-      console.warn("No camera, trying audio only...");
-
-      try {
-        localStream = await navigator.mediaDevices.getUserMedia({
-          video: false,
-          audio: true
-        });
-      } catch (err2) {
-        alert("No microphone found.");
-        return;
-      }
-    } else {
-      alert("Unexpected error: " + err.message);
-      return;
-    }
+    alert("Camera/Mic error: " + err.message);
+    return;
   }
 
   document.getElementById("localVideo").srcObject = localStream;
 
-  const interests = document.getElementById("interests").value.split(",");
+  const interests = document
+    .getElementById("interests")
+    .value.split(",")
+    .map(i => i.trim().toLowerCase())
+    .filter(Boolean);
+
   socket.emit("joinQueue", { interests });
 }
-// 🔗 Socket events
-socket.on("matched", async (id) => {
+
+// 🔗 Matched
+socket.on("matched", (id) => {
   partnerId = id;
   createPeer(true);
 });
 
-socket.on("offer", async (offer) => {
+// 📥 Offer
+socket.on("offer", async (data) => {
+  partnerId = data.from;
   createPeer(false);
-  await peer.setRemoteDescription(offer);
+
+  await peer.setRemoteDescription(data.offer);
 
   const answer = await peer.createAnswer();
   await peer.setLocalDescription(answer);
@@ -89,23 +74,32 @@ socket.on("offer", async (offer) => {
   socket.emit("answer", { to: partnerId, answer });
 });
 
-socket.on("answer", async (answer) => {
-  await peer.setRemoteDescription(answer);
+// 📥 Answer
+socket.on("answer", async (data) => {
+  await peer.setRemoteDescription(data.answer);
 });
 
-socket.on("ice-candidate", async (candidate) => {
+// ❄ ICE
+socket.on("ice-candidate", async (data) => {
   if (peer) {
-    await peer.addIceCandidate(candidate);
+    await peer.addIceCandidate(data.candidate);
   }
 });
 
-// 🧠 Create Peer Connection
+// ❌ Partner disconnected
+socket.on("partner-disconnected", () => {
+  alert("Partner disconnected");
+  cleanup();
+});
+
+// 🧠 Create Peer
 function createPeer(isInitiator) {
   peer = new RTCPeerConnection({
-    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" }
+    ]
   });
 
-  // Send ICE candidates
   peer.onicecandidate = (event) => {
     if (event.candidate) {
       socket.emit("ice-candidate", {
@@ -115,17 +109,14 @@ function createPeer(isInitiator) {
     }
   };
 
-  // Receive remote video
   peer.ontrack = (event) => {
     document.getElementById("remoteVideo").srcObject = event.streams[0];
   };
 
-  // Add local stream
   localStream.getTracks().forEach(track => {
     peer.addTrack(track, localStream);
   });
 
-  // Initiator creates offer
   if (isInitiator) {
     peer.createOffer().then(offer => {
       peer.setLocalDescription(offer);
@@ -134,11 +125,23 @@ function createPeer(isInitiator) {
   }
 }
 
-// 🔁 Next user
-function next() {
-  if (peer) peer.close();
-  document.getElementById("remoteVideo").srcObject = null;
+// 🔁 Next
+function nextUser() {
+  socket.emit("next");
+  cleanup();
+
   socket.emit("joinQueue", { interests: [] });
+}
+
+// 🧹 Cleanup
+function cleanup() {
+  if (peer) {
+    peer.close();
+    peer = null;
+  }
+
+  document.getElementById("remoteVideo").srcObject = null;
+  partnerId = null;
 }
 </script>
 
