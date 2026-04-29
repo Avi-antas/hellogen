@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Random Video Chat</title>
+  <style>
+    video {
+      width: 45%;
+      border: 2px solid black;
+      margin: 5px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>🎥 Random Video Chat</h2>
+
+<input id="interests" placeholder="coding,music" />
+<button onclick="start()">Start</button>
+<button onclick="next()">Next</button>
+
+<br><br>
+
+<video id="localVideo" autoplay muted></video>
+<video id="remoteVideo" autoplay></video>
+
+<script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+
+<script>
+const socket = io("http://192.168.0.106:5000");
+
+let localStream;
+let peer;
+let partnerId;
+
+// 🎥 Get camera
+async function start() {
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true
+    });
+
+    console.log("✅ Camera + mic granted");
+
+  } catch (err) {
+    console.error("Primary error:", err.name);
+
+    if (err.name === "NotAllowedError") {
+      alert("Permission denied. Please allow camera & microphone.");
+      return;
+    }
+
+    if (err.name === "NotFoundError") {
+      console.warn("No camera, trying audio only...");
+
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({
+          video: false,
+          audio: true
+        });
+      } catch (err2) {
+        alert("No microphone found.");
+        return;
+      }
+    } else {
+      alert("Unexpected error: " + err.message);
+      return;
+    }
+  }
+
+  document.getElementById("localVideo").srcObject = localStream;
+
+  const interests = document.getElementById("interests").value.split(",");
+  socket.emit("joinQueue", { interests });
+}
+// 🔗 Socket events
+socket.on("matched", async (id) => {
+  partnerId = id;
+  createPeer(true);
+});
+
+socket.on("offer", async (offer) => {
+  createPeer(false);
+  await peer.setRemoteDescription(offer);
+
+  const answer = await peer.createAnswer();
+  await peer.setLocalDescription(answer);
+
+  socket.emit("answer", { to: partnerId, answer });
+});
+
+socket.on("answer", async (answer) => {
+  await peer.setRemoteDescription(answer);
+});
+
+socket.on("ice-candidate", async (candidate) => {
+  if (peer) {
+    await peer.addIceCandidate(candidate);
+  }
+});
+
+// 🧠 Create Peer Connection
+function createPeer(isInitiator) {
+  peer = new RTCPeerConnection({
+    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+  });
+
+  // Send ICE candidates
+  peer.onicecandidate = (event) => {
+    if (event.candidate) {
+      socket.emit("ice-candidate", {
+        to: partnerId,
+        candidate: event.candidate
+      });
+    }
+  };
+
+  // Receive remote video
+  peer.ontrack = (event) => {
+    document.getElementById("remoteVideo").srcObject = event.streams[0];
+  };
+
+  // Add local stream
+  localStream.getTracks().forEach(track => {
+    peer.addTrack(track, localStream);
+  });
+
+  // Initiator creates offer
+  if (isInitiator) {
+    peer.createOffer().then(offer => {
+      peer.setLocalDescription(offer);
+      socket.emit("offer", { to: partnerId, offer });
+    });
+  }
+}
+
+// 🔁 Next user
+function next() {
+  if (peer) peer.close();
+  document.getElementById("remoteVideo").srcObject = null;
+  socket.emit("joinQueue", { interests: [] });
+}
+</script>
+
+</body>
+</html>
