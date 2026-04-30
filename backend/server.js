@@ -14,11 +14,30 @@ const app = express();
 // 🔌 Connect Database - Fix: Use MONGO_URI
 connectDB();
 
-// 🧩 Middlewares
+// CORS configuration - EXACT for your Vercel URL
+const allowedOrigins = [
+  'https://project-g01sz-eo9megnw9-avi-antas-projects.vercel.app',
+  'https://project-g01sz-eo9megnw9-avi-antas-projects.vercel.app/',
+  'http://localhost:5500',
+  'http://localhost:5000'
+];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "*",
-  credentials: true
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('Blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
 app.use(express.json());
 
 // 🛣 Routes
