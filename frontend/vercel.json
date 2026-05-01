@@ -1,12 +1,15 @@
 {
   "version": 2,
+  "name": "hellogen",
+  "public": true,
+  "outputDirectory": "frontend",
   "builds": [
     {
       "src": "frontend/index.html",
       "use": "@vercel/static"
     },
     {
-      "src": "frontend/styles.css",
+      "src": "frontend/style.css",
       "use": "@vercel/static"
     },
     {
@@ -18,14 +21,6 @@
     {
       "src": "/",
       "dest": "/frontend/index.html"
-    },
-    {
-      "src": "/styles.css",
-      "dest": "/frontend/styles.css"
-    },
-    {
-      "src": "/script.js",
-      "dest": "/frontend/script.js"
     },
     {
       "src": "/(.*)",
