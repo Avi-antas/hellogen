@@ -1,438 +1,78 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-  <title>Random Video Chat</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
-    }
-
-    .container {
-      background: white;
-      border-radius: 20px;
-      padding: 30px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      max-width: 1200px;
-      width: 100%;
-    }
-
-    h2 {
-      text-align: center;
-      color: #333;
-      margin-bottom: 20px;
-    }
-
-    .controls {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-
-    input {
-      padding: 10px 15px;
-      font-size: 16px;
-      border: 2px solid #ddd;
-      border-radius: 10px;
-      margin-right: 10px;
-      width: 200px;
-    }
-
-    button {
-      padding: 10px 25px;
-      font-size: 16px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      margin: 0 5px;
-      transition: transform 0.2s;
-    }
-
-    button:hover {
-      transform: scale(1.05);
-    }
-
-    button:active {
-      transform: scale(0.95);
-    }
-
-    .video-container {
-      display: flex;
-      justify-content: space-between;
-      gap: 20px;
-      margin-top: 20px;
-    }
-
-    .video-wrapper {
-      flex: 1;
-      background: #000;
-      border-radius: 15px;
-      overflow: hidden;
-      position: relative;
-    }
-
-    .video-label {
-      position: absolute;
-      bottom: 10px;
-      left: 10px;
-      background: rgba(0,0,0,0.6);
-      color: white;
-      padding: 5px 10px;
-      border-radius: 5px;
-      font-size: 12px;
-      z-index: 1;
-    }
-
-    video {
-      width: 100%;
-      height: auto;
-      background: #000;
-      transform: rotateY(180deg);
-    }
-
-    .status {
-      text-align: center;
-      margin-top: 15px;
-      padding: 10px;
-      border-radius: 10px;
-      font-size: 14px;
-    }
-
-    .status.connected {
-      background: #d4edda;
-      color: #155724;
-    }
-
-    .status.disconnected {
-      background: #f8d7da;
-      color: #721c24;
-    }
-
-    @media (max-width: 768px) {
-      .video-container {
-        flex-direction: column;
-      }
-      
-      input {
-        width: 150px;
-      }
-    }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Random Video Chat | Connect Instantly</title>
+  <link rel="stylesheet" href="./style.css">
 </head>
-
 <body>
-  <div class="container">
-    <h2>🎥 Random Video Chat</h2>
-
-    <div class="controls">
-      <input id="interests" placeholder="interests: coding,music" />
-      <button onclick="start()">🚀 Start</button>
-      <button onclick="nextUser()">⏭️ Next</button>
-    </div>
-
+  <div class="app">
+    <!-- Video Containers -->
     <div class="video-container">
-      <div class="video-wrapper">
-        <div class="video-label">📹 You</div>
-        <video id="localVideo" autoplay muted playsinline></video>
-      </div>
-      <div class="video-wrapper">
-        <div class="video-label">👤 Partner</div>
+      <div class="video-wrapper partner-video" id="partnerVideoWrapper">
         <video id="remoteVideo" autoplay playsinline></video>
       </div>
+      
+      <div class="video-wrapper local-video hidden" id="localVideoWrapper" onclick="window.switchCamera?.()">
+        <video id="localVideo" autoplay muted playsinline></video>
+      </div>
     </div>
 
-    <div id="status" class="status disconnected">⚡ Connecting to server...</div>
+    <!-- Controls (Hidden until call starts) -->
+    <div class="controls hidden" id="controls">
+      <button class="control-btn" onclick="window.toggleAudio?.()" id="audioBtn">🎤</button>
+      <button class="control-btn next" onclick="window.nextUser?.()">⏭️</button>
+      <button class="control-btn end" onclick="window.endCall?.()">📞</button>
+    </div>
+
+    <!-- Status Indicator -->
+    <div class="status-indicator" id="statusIndicator">
+      👋 Welcome! Select your interest
+    </div>
+
+    <!-- Loading Overlay (Hidden by default) -->
+    <div class="loading-overlay hidden" id="loadingOverlay">
+      <div class="loading-content">
+        <div class="spinner"></div>
+        <p id="loadingText">Finding your perfect match...</p>
+        <button class="cancel-loading" onclick="window.cancelLoading?.()">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Interest Modal -->
+    <div class="modal" id="interestModal">
+      <div class="modal-content">
+        <h2>🎯 Choose Your Interest</h2>
+        <input type="text" class="interest-input" id="interestInput" placeholder="e.g., coding, music, gaming" autocomplete="off">
+        
+        <h3>🔥 Trending Topics</h3>
+        <div class="trending-topics" id="trendingTopics">
+          <div class="topic-chip" data-topic="gaming">🎮 Gaming</div>
+          <div class="topic-chip" data-topic="coding">💻 Coding</div>
+          <div class="topic-chip" data-topic="music">🎵 Music</div>
+          <div class="topic-chip" data-topic="sports">⚽ Sports</div>
+          <div class="topic-chip" data-topic="movies">🎬 Movies</div>
+          <div class="topic-chip" data-topic="cricket">🏏 Cricket</div>
+          <div class="topic-chip" data-topic="football">⚽ Football</div>
+          <div class="topic-chip" data-topic="tech">🔧 Tech</div>
+        </div>
+        
+        <button class="start-btn" id="startBtn">🚀 Start Video Chat</button>
+        <p style="text-align: center; margin-top: 15px; font-size: 12px; color: #999;">
+          We'll match you with similar interests (60-70% match)
+        </p>
+      </div>
+    </div>
+
+    <!-- Analytics Dashboard (Hidden by default, triple-click to show) -->
+    <div class="analytics-dashboard hidden" id="analyticsDashboard">
+      <strong>📊 Session Analytics</strong>
+      <div id="analyticsContent"></div>
+    </div>
   </div>
 
   <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
-
-  <script>
-    // ============================================
-    // 🔧 IMPORTANT: REPLACE WITH YOUR RENDER URL
-    // ============================================
-    const BACKEND_URL = 'https://hellogen.onrender.com';
-    // Example: const BACKEND_URL = 'https://video-chat-backend.onrender.com';
-    // ============================================
-
-    let localStream;
-    let peer;
-    let partnerId;
-    let mySocketId;
-    let isConnected = false;
-
-    // Socket connection with production settings
-    const socket = io(BACKEND_URL, {
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 20000,
-      withCredentials: true
-    });
-
-    // Socket event handlers
-    socket.on('connect', () => {
-      mySocketId = socket.id;
-      isConnected = true;
-      console.log('✅ Connected to backend:', BACKEND_URL);
-      console.log('📡 Socket ID:', mySocketId);
-      updateStatus('Connected to server! Click Start to begin', 'connected');
-    });
-
-    socket.on('connect_error', (error) => {
-      console.error('❌ Connection error:', error.message);
-      isConnected = false;
-      updateStatus('⚠️ Cannot connect to server. Please check your connection.', 'disconnected');
-    });
-
-    socket.on('disconnect', (reason) => {
-      console.log('Disconnected:', reason);
-      isConnected = false;
-      updateStatus('🔌 Disconnected from server. Refresh to reconnect.', 'disconnected');
-      cleanup();
-    });
-
-    socket.on('reconnect', (attemptNumber) => {
-      console.log('Reconnected after', attemptNumber, 'attempts');
-      updateStatus('Reconnected! Click Start to begin', 'connected');
-    });
-
-    // 🎥 Start video chat
-    async function start() {
-      if (!isConnected) {
-        alert('Not connected to server. Please refresh the page.');
-        return;
-      }
-
-      try {
-        localStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true
-        });
-        document.getElementById("localVideo").srcObject = localStream;
-        updateStatus('✅ Camera ready! Finding a partner...', 'connected');
-
-        const interests = document.getElementById("interests").value
-          .split(",")
-          .map(i => i.trim().toLowerCase())
-          .filter(Boolean);
-
-        socket.emit("joinQueue", { interests });
-      } catch (err) {
-        console.error('Camera error:', err);
-        alert("Camera/Mic error: " + err.message + "\nPlease allow camera access and refresh.");
-        updateStatus('❌ Camera access denied', 'disconnected');
-      }
-    }
-
-    // 🔗 Matched with partner
-    socket.on("matched", (id) => {
-      partnerId = id;
-      const isInitiator = mySocketId < partnerId;
-      console.log(`🎯 Matched with ${partnerId}, initiator: ${isInitiator}`);
-      updateStatus('🎉 Connected with a partner!', 'connected');
-      createPeer(isInitiator);
-    });
-
-    // 📥 Receive offer
-    socket.on("offer", async (data) => {
-      partnerId = data.from;
-      console.log("📥 Received offer from", partnerId);
-      updateStatus('📞 Connecting to partner...', 'connected');
-      createPeer(false);
-      
-      try {
-        await peer.setRemoteDescription(data.offer);
-        const answer = await peer.createAnswer();
-        await peer.setLocalDescription(answer);
-        socket.emit("answer", { to: partnerId, answer });
-      } catch (err) {
-        console.error('Offer error:', err);
-      }
-    });
-
-    // 📥 Receive answer
-    socket.on("answer", async (data) => {
-      if (peer) {
-        try {
-          await peer.setRemoteDescription(data.answer);
-          console.log('✅ Answer received');
-        } catch (err) {
-          console.error('Answer error:', err);
-        }
-      }
-    });
-
-    // ❄️ ICE candidate
-    socket.on("ice-candidate", async (data) => {
-      if (peer) {
-        try {
-          await peer.addIceCandidate(data.candidate);
-          console.log('❄️ ICE candidate added');
-        } catch (err) {
-          console.error("ICE candidate error:", err);
-        }
-      }
-    });
-
-    // ❌ Partner disconnected
-    socket.on("partner-disconnected", () => {
-      console.log('Partner disconnected');
-      alert("Partner disconnected. Click Next to find a new partner.");
-      updateStatus('💔 Partner disconnected. Click Next to continue', 'disconnected');
-      cleanup();
-    });
-
-    // 🧠 Create WebRTC Peer Connection
-    function createPeer(isInitiator) {
-      if (peer) {
-        console.log('Peer already exists, closing old one');
-        peer.close();
-        peer = null;
-      }
-
-      const configuration = {
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" },
-          { urls: "stun:stun2.l.google.com:19302" },
-          {
-            urls: "turn:openrelay.metered.ca:80",
-            username: "openrelayproject",
-            credential: "openrelayproject"
-          }
-        ],
-        iceCandidatePoolSize: 10
-      };
-
-      peer = new RTCPeerConnection(configuration);
-
-      // Monitor ICE connection state
-      peer.oniceconnectionstatechange = () => {
-        console.log("ICE state:", peer.iceConnectionState);
-        switch (peer.iceConnectionState) {
-          case 'connected':
-            updateStatus('🎬 Video call active!', 'connected');
-            break;
-          case 'failed':
-            console.error('ICE connection failed');
-            updateStatus('⚠️ Connection failed. Try Next button.', 'disconnected');
-            break;
-          case 'disconnected':
-            updateStatus('🔄 Reconnecting...', 'disconnected');
-            break;
-        }
-      };
-
-      // Handle ICE candidates
-      peer.onicecandidate = (event) => {
-        if (event.candidate && partnerId) {
-          console.log('📤 Sending ICE candidate');
-          socket.emit("ice-candidate", {
-            to: partnerId,
-            candidate: event.candidate
-          });
-        }
-      };
-
-      // Handle remote stream
-      peer.ontrack = (event) => {
-        console.log("🎥 Remote stream received!");
-        document.getElementById("remoteVideo").srcObject = event.streams[0];
-        updateStatus('🎥 Video connected!', 'connected');
-      };
-
-      // Add local tracks
-      if (localStream) {
-        localStream.getTracks().forEach(track => {
-          peer.addTrack(track, localStream);
-          console.log('📹 Added track:', track.kind);
-        });
-      } else {
-        console.error('No local stream available');
-      }
-
-      // Create offer if initiator
-      if (isInitiator) {
-        peer.createOffer()
-          .then(offer => peer.setLocalDescription(offer))
-          .then(() => {
-            console.log('📤 Sending offer');
-            socket.emit("offer", { to: partnerId, offer: peer.localDescription });
-          })
-          .catch(err => console.error("Offer creation error:", err));
-      }
-    }
-
-    // 🔁 Next user
-    function nextUser() {
-      if (!isConnected) {
-        alert('Not connected to server. Please refresh.');
-        return;
-      }
-      
-      console.log('Next button clicked - finding new partner');
-      updateStatus('🔄 Finding new partner...', 'connected');
-      socket.emit("next");
-      cleanup();
-      
-      const interests = document.getElementById("interests").value
-        .split(",")
-        .map(i => i.trim().toLowerCase())
-        .filter(Boolean);
-      
-      setTimeout(() => {
-        socket.emit("joinQueue", { interests });
-      }, 100);
-    }
-
-    // 🧹 Cleanup connection
-    function cleanup() {
-      if (peer) {
-        peer.close();
-        peer = null;
-      }
-      document.getElementById("remoteVideo").srcObject = null;
-      partnerId = null;
-    }
-
-    // 📊 Update UI status
-    function updateStatus(message, type) {
-      const statusDiv = document.getElementById('status');
-      statusDiv.textContent = message;
-      statusDiv.className = `status ${type}`;
-      console.log('Status:', message);
-    }
-
-    // Handle page refresh/close
-    window.addEventListener('beforeunload', () => {
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-      }
-      if (peer) {
-        peer.close();
-      }
-      if (socket) {
-        socket.emit('next');
-      }
-    });
-
-    console.log('📱 App loaded. Backend URL:', BACKEND_URL);
-  </script>
+  <script src="./script.js"></script>
 </body>
-
 </html>
