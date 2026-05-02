@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Choose Topic - Hellogen</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .topics-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    h2 {
+      text-align: center;
+      color: white;
+      margin-bottom: 30px;
+    }
+    
+    .topics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 15px;
+    }
+    
+    .topic-card {
+      background: white;
+      padding: 25px 15px;
+      text-align: center;
+      border-radius: 15px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .topic-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    
+    .topic-emoji { font-size: 40px; display: block; margin-bottom: 10px; }
+    .topic-name { font-size: 16px; font-weight: bold; margin-bottom: 5px; }
+    .topic-count { font-size: 12px; color: #999; }
+    
+    .custom-topic {
+      margin-top: 30px;
+      display: flex;
+      gap: 10px;
+    }
+    
+    .custom-topic input {
+      flex: 1;
+      padding: 15px;
+      border: none;
+      border-radius: 15px;
+      font-size: 16px;
+    }
+    
+    .custom-topic button {
+      padding: 15px 30px;
+      background: white;
+      border: none;
+      border-radius: 15px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    
+    .info {
+      text-align: center;
+      color: white;
+      margin-top: 30px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="topics-container">
+    <h2>🎯 Select Your Interest</h2>
+    
+    <div class="topics-grid" id="topicsGrid">
+      <!-- Topics loaded dynamically -->
+    </div>
+    
+    <div class="custom-topic">
+      <input type="text" id="customTopic" placeholder="Or enter custom topic...">
+      <button onclick="startWithCustomTopic()">Start</button>
+    </div>
+    
+    <div class="info" id="userInfo"></div>
+  </div>
+  
+  <script>
+    const topics = [
+      { emoji: "🎮", name: "Gaming", count: 234 },
+      { emoji: "💻", name: "Coding", count: 156 },
+      { emoji: "🎵", name: "Music", count: 189 },
+      { emoji: "⚽", name: "Sports", count: 143 },
+      { emoji: "🎬", name: "Movies", count: 98 },
+      { emoji: "🏏", name: "Cricket", count: 267 },
+      { emoji: "🗣️", name: "Debate", count: 76 },
+      { emoji: "🎤", name: "Open Mic", count: 54 },
+      { emoji: "🤝", name: "Friendly Chat", count: 312 },
+      { emoji: "💡", name: "Startups", count: 89 }
+    ];
+    
+    // Load user info
+    const isGuest = localStorage.getItem('isGuest') === 'true';
+    const token = localStorage.getItem('token');
+    
+    if (isGuest) {
+      document.getElementById('userInfo').innerHTML = '⚠️ Guest mode: 10 minutes total chat time';
+      checkGuestTime();
+    } else {
+      document.getElementById('userInfo').innerHTML = '✅ Authenticated user | 80% matching priority';
+    }
+    
+    // Render topics
+    const grid = document.getElementById('topicsGrid');
+    topics.forEach(topic => {
+      const card = document.createElement('div');
+      card.className = 'topic-card';
+      card.onclick = () => startWithTopic(topic.name);
+      card.innerHTML = `
+        <span class="topic-emoji">${topic.emoji}</span>
+        <div class="topic-name">${topic.name}</div>
+        <div class="topic-count">${topic.count} online</div>
+      `;
+      grid.appendChild(card);
+    });
+    
+    async function startWithTopic(topic) {
+      localStorage.setItem('selectedTopic', topic);
+      window.location.href = './chat.html';
+    }
+    
+    function startWithCustomTopic() {
+      const custom = document.getElementById('customTopic').value.trim();
+      if (custom) {
+        localStorage.setItem('selectedTopic', custom);
+        window.location.href = './chat.html';
+      }
+    }
+    
+    async function checkGuestTime() {
+      const response = await fetch('/api/auth/guest-time', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.expired) {
+        alert('Guest time expired. Please login to continue.');
+        window.location.href = '/';
+      }
+    }
+  </script>
+</body>
+</html>

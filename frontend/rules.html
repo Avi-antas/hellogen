@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rules & Privacy - Hellogen</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .rules-container {
+      background: white;
+      border-radius: 30px;
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+    }
+    
+    h2 { margin-bottom: 20px; color: #333; }
+    
+    .rule-section {
+      margin: 25px 0;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 15px;
+    }
+    
+    .rule-section h3 { color: #667eea; margin-bottom: 10px; }
+    .rule-section p { color: #666; line-height: 1.6; }
+    
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      margin: 20px 0;
+      cursor: pointer;
+    }
+    
+    .checkbox-container input {
+      margin-right: 10px;
+      width: 20px;
+      height: 20px;
+    }
+    
+    .btn {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 15px;
+      font-size: 18px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    
+    .btn.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .warning {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      padding: 15px;
+      border-radius: 10px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="rules-container">
+    <h2>📜 Community Guidelines</h2>
+    
+    <div class="warning">
+      ⚠️ Violations will result in suspensions starting from 24 hours up to permanent ban
+    </div>
+    
+    <div class="rule-section">
+      <h3>🚫 Prohibited Behavior</h3>
+      <p>• Harassment, bullying, or threatening others</p>
+      <p>• Nudity, sexual content, or explicit material</p>
+      <p>• Hate speech or discrimination</p>
+      <p>• Spam or disruptive behavior</p>
+    </div>
+    
+    <div class="rule-section">
+      <h3>🎯 Expected Conduct</h3>
+      <p>• Treat others with respect</p>
+      <p>• Stay on topic in themed rooms</p>
+      <p>• Report violations using red flag button</p>
+    </div>
+    
+    <div class="rule-section">
+      <h3>🔒 Privacy & Data</h3>
+      <p>• Conversations are peer-to-peer and not recorded</p>
+      <p>• Reports are reviewed by AI and moderators</p>
+      <p>• Your data is never sold to third parties</p>
+    </div>
+    
+    <label class="checkbox-container">
+      <input type="checkbox" id="agreeCheckbox" onchange="toggleButton()">
+      <span>I agree to follow the community guidelines and understand the consequences of violations</span>
+    </label>
+    
+    <button class="btn disabled" id="continueBtn" onclick="acceptRules()">
+      Accept & Continue
+    </button>
+  </div>
+  
+  <script>
+    function toggleButton() {
+      const checkbox = document.getElementById('agreeCheckbox');
+      const btn = document.getElementById('continueBtn');
+      if (checkbox.checked) {
+        btn.classList.remove('disabled');
+      } else {
+        btn.classList.add('disabled');
+      }
+    }
+    
+    async function acceptRules() {
+      const checkbox = document.getElementById('agreeCheckbox');
+      if (!checkbox.checked) {
+        alert('Please accept the rules to continue');
+        return;
+      }
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/';
+        return;
+      }
+      
+      // Mark rules accepted
+      localStorage.setItem('rulesAccepted', 'true');
+      
+      // Check if guest mode
+      const isGuest = localStorage.getItem('isGuest') === 'true';
+      if (isGuest) {
+        window.location.href = './topics.html';
+      } else {
+        window.location.href = './topics.html';
+      }
+    }
+  </script>
+</body>
+</html>

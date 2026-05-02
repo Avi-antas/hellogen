@@ -1,4 +1,5 @@
 const { isRedisReady, getRedis } = require('../config/redis');
+const { handleAudioModeration } = require('./audioModeration');
 
 // In-memory queue (fallback when Redis is disabled)
 let waitingUsers = [];
@@ -11,6 +12,7 @@ function handleSockets(io) {
     let currentUser = null;
     let isInQueue = false;
 
+     handleAudioModeration(io, socket);
     // 🎯 JOIN QUEUE with interest matching
     socket.on("joinQueue", async (user) => {
       console.log("📥 JOIN:", socket.id, user.interests);

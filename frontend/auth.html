@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Hellogen</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .auth-container {
+      background: white;
+      border-radius: 30px;
+      padding: 40px;
+      max-width: 450px;
+      width: 90%;
+    }
+
+    h2 {
+      margin-bottom: 30px;
+      color: #333;
+    }
+
+    .step {
+      display: none;
+    }
+
+    .step.active {
+      display: block;
+    }
+
+    input,
+    .avatar-selector {
+      width: 100%;
+      padding: 15px;
+      margin: 10px 0;
+      border: 2px solid #ddd;
+      border-radius: 15px;
+      font-size: 16px;
+    }
+
+    .avatar-options {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 20px 0;
+    }
+
+    .avatar-option {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+    }
+
+    .avatar-option.selected {
+      border-color: #667eea;
+      transform: scale(1.05);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 15px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+
+    .error {
+      color: red;
+      font-size: 12px;
+      margin-top: 5px;
+    }
+
+    .success {
+      color: green;
+      font-size: 12px;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="auth-container">
+    <div id="step1" class="step active">
+      <h2>📱 Login with Phone</h2>
+      <input type="tel" id="phoneNumber" placeholder="Enter phone number" />
+      <button class="btn" onclick="sendOTP()">Send OTP</button>
+      <div class="error" id="phoneError"></div>
+      <div class="success" id="phoneSuccess"></div>
+    </div>
+
+    <div id="step2" class="step">
+      <h2>🔐 Verify OTP</h2>
+      <input type="text" id="otpCode" placeholder="Enter 6-digit OTP" maxlength="6" />
+      <button class="btn" onclick="verifyOTP()">Verify & Continue</button>
+      <div class="error" id="otpError"></div>
+    </div>
+
+    <div id="step3" class="step">
+      <h2>👤 Complete Profile</h2>
+      <input type="text" id="username" placeholder="Username" />
+      <input type="email" id="email" placeholder="Email" />
+
+      <div class="avatar-selector">
+        <p>Choose Profile Picture:</p>
+        <div class="avatar-options" id="avatarOptions">
+          <div class="avatar-option" data-avatar="😀" style="background: #FFE5B4;">😀</div>
+          <div class="avatar-option" data-avatar="😎" style="background: #B4E5FF;">😎</div>
+          <div class="avatar-option" data-avatar="🎤" style="background: #FFB4E5;">🎤</div>
+          <div class="avatar-option" data-avatar="🎮" style="background: #E5FFB4;">🎮</div>
+        </div>
+      </div>
+
+      <button class="btn" onclick="completeProfile()">Complete Setup</button>
+      <div class="error" id="profileError"></div>
+    </div>
+  </div>
+
+  <script>
+    // Backend URL configuration
+    const BACKEND_URL = 'http://localhost:5000';
+
+    let selectedAvatar = '😀';
+    let phoneNumber = '';
+
+    // Avatar selection
+    document.querySelectorAll('.avatar-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        document.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        selectedAvatar = opt.getAttribute('data-avatar');
+      });
+    });
+
+    async function sendOTP() {
+      phoneNumber = document.getElementById('phoneNumber').value;
+      if (!phoneNumber) {
+        document.getElementById('phoneError').innerText = 'Phone number required';
+        return;
+      }
+
+      document.getElementById('phoneError').innerText = '';
+      document.getElementById('phoneSuccess').innerText = 'Sending OTP...';
+
+      try {
+        // Correct path: /auth/send-otp (not /api/auth/send-otp)
+        const response = await fetch(`${BACKEND_URL}/auth/send-otp`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneNumber })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          document.getElementById('phoneSuccess').innerText = `OTP sent! Demo OTP: ${data.otp}`;
+          document.getElementById('step1').classList.remove('active');
+          document.getElementById('step2').classList.add('active');
+        } else {
+          document.getElementById('phoneError').innerText = data.message;
+          document.getElementById('phoneSuccess').innerText = '';
+        }
+      } catch (err) {
+        console.error('Send OTP error:', err);
+        document.getElementById('phoneError').innerText = 'Server error. Is backend running?';
+        document.getElementById('phoneSuccess').innerText = '';
+      }
+    }
+
+    async function verifyOTP() {
+  const otp = document.getElementById('otpCode').value;
+  if (!otp) {
+    document.getElementById('otpError').innerText = 'OTP required';
+    return;
+  }
+  
+  console.log('Verifying OTP:', { phoneNumber, otp });
+  
+  try {
+    const response = await fetch(`${BACKEND_URL}/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        phoneNumber: phoneNumber, 
+        otpCode: otp 
+      })
+    });
+    
+    const data = await response.json();
+    console.log('Verify response:', data);
+    
+    if (data.success) {
+      localStorage.setItem('tempToken', data.tempToken);
+      
+      // Check if user already has complete profile
+      if (data.hasCompleteProfile === true) {
+        console.log('✅ Existing user with complete profile - skipping profile setup');
+        
+        // Get full token for existing user
+        const completeResponse = await fetch(`${BACKEND_URL}/auth/complete-profile`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tempToken: data.tempToken,
+            skipProfile: true,
+            existingUser: true
+          })
+        });
+        
+        const completeData = await completeResponse.json();
+        console.log('Complete profile response:', completeData);
+        
+        if (completeData.success) {
+          localStorage.setItem('token', completeData.token);
+          localStorage.setItem('userId', completeData.user.id);
+          localStorage.removeItem('tempToken');
+          localStorage.removeItem('isGuest');
+          console.log('✅ Redirecting to rules page...');
+          window.location.href = './rules.html';
+        } else {
+          document.getElementById('otpError').innerText = completeData.message;
+        }
+      } else {
+        // New user or incomplete profile - show profile setup
+        console.log('🆕 New user or incomplete profile - showing profile setup');
+        document.getElementById('step2').classList.remove('active');
+        document.getElementById('step3').classList.add('active');
+      }
+    } else {
+      document.getElementById('otpError').innerText = data.message;
+    }
+  } catch (err) {
+    console.error('Verify OTP error:', err);
+    document.getElementById('otpError').innerText = 'Server error: ' + err.message;
+  }
+}
+
+    async function completeProfile() {
+      const username = document.getElementById('username').value;
+      const email = document.getElementById('email').value;
+
+      if (!username || !email) {
+        document.getElementById('profileError').innerText = 'All fields required';
+        return;
+      }
+
+      const tempToken = localStorage.getItem('tempToken');
+      console.log('Complete profile with tempToken:', tempToken?.substring(0, 50));
+
+      if (!tempToken) {
+        document.getElementById('profileError').innerText = 'Session expired. Please login again.';
+        return;
+      }
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/auth/complete-profile`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tempToken: tempToken,
+            username,
+            email,
+            profilePic: selectedAvatar
+          })
+        });
+
+        const data = await response.json();
+        console.log('Complete profile response:', data);
+
+        if (data.success) {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('userId', data.user.id);
+          localStorage.removeItem('tempToken');
+          window.location.href = './rules.html';
+        } else {
+          document.getElementById('profileError').innerText = data.message;
+        }
+      } catch (err) {
+        console.error('Complete profile error:', err);
+        document.getElementById('profileError').innerText = 'Server error: ' + err.message;
+      }
+    }
+  </script>
+</body>
+
+</html>
