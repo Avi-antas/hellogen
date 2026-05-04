@@ -96,6 +96,24 @@
   </div>
 
   <script src="script.js"></script>
+  <!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+  import { getAuth, signInWithPhoneNumber, RecaptchaVerifier } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+  
+  const firebaseConfig = {
+  apiKey: "AIzaSyBJofMSqKFcPcz6wnPe6KNIz-sJLbvaLU8",
+  authDomain: "hellogen-v1.firebaseapp.com",
+  projectId: "hellogen-v1",
+  storageBucket: "hellogen-v1.firebasestorage.app",
+  messagingSenderId: "993138025864",
+  appId: "1:993138025864:web:27b066353e58a92841863d",
+  measurementId: "G-W60WDLJCNG"
+};
+  
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+</script>
   <script>
     function startAuth() {
       window.location.href = './auth.html';

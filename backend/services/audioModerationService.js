@@ -1,119 +1,127 @@
-// Audio Moderation Service - Detects slangs from audio stream
-class AudioModerationService {
+const FormData = require('form-data');
+const fetch = require('node-fetch');
+
+class AIModerationService {
   constructor() {
-    // Comprehensive slang database
-    this.slangDatabase = {
-      // English slangs
-      english: {
-        severe: ['fuck', 'motherfucker', 'cunt', 'nigger', 'faggot'],
-        moderate: ['shit', 'asshole', 'bitch', 'bastard', 'damn'],
-        mild: ['crap', 'hell', 'stupid', 'idiot', 'dumb']
-      },
-      
-      // Hindi/Urdu slangs (Indian context)
-      hindi: {
-        severe: ['madarchod', 'bhosdike', 'chutiya', 'gandu', 'bhenchod'],
-        moderate: ['saala', 'kamine', 'harami', 'lodu', 'chodu'],
-        mild: ['bevakoof', 'nalayak', 'pagal', 'ullu']
-      },
-      
-      // Common abusive patterns
-      patterns: [
-        /you\s+(?:are\s+)?(?:a\s+)?(?:fucking|fukin|fakin)\s+(?:idiot|stupid|dumb)/gi,
-        /(?:fuck|suck)\s+(?:you|off|it)/gi,
-        /(?:kill|murder|death)\s+you/gi,
-        /shut\s+(?:the\s+)?(?:fuck|hell|up)/gi,
-        /(?:what|where|who)\s+the\s+(?:fuck|hell)/gi
-      ]
-    };
-    
-    // Speech recognition keywords (for real-time detection)
-    this.keywords = this.buildKeywordSet();
+    this.apiKey = process.env.HUGGINGFACE_API_KEY;
+    this.whisperUrl = 'https://api-inference.huggingface.co/models/openai/whisper-small';
+    this.toxicUrl = 'https://api-inference.huggingface.co/models/unitary/toxic-bert';
+    this.isAvailable = !!this.apiKey;
   }
-  
-  buildKeywordSet() {
-    const keywords = new Set();
+
+  // Step 1: Speech-to-Text using Whisper
+  async transcribeAudio(audioBuffer) {
+    if (!this.isAvailable) return this.mockTranscribe();
     
-    Object.values(this.slangDatabase.english).forEach(words => 
-      words.forEach(w => keywords.add(w.toLowerCase()))
-    );
-    Object.values(this.slangDatabase.hindi).forEach(words => 
-      words.forEach(w => keywords.add(w.toLowerCase()))
-    );
-    
-    return keywords;
+    try {
+      const response = await fetch(this.whisperUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/octet-stream'
+        },
+        body: audioBuffer
+      });
+      
+      const result = await response.json();
+      return result.text || '';
+    } catch (err) {
+      console.error('Whisper failed:', err);
+      return '';
+    }
   }
-  
-  // Detect slangs from audio text (speech-to-text result)
-  detectSlangs(transcript, userId) {
-    const lowerText = transcript.toLowerCase();
-    const detectedSlangs = [];
-    let severity = 0;
-    let categories = {
-      abusive: false,
-      threatening: false,
-      harassment: false
-    };
+
+  // Step 2: Toxicity Detection using ToxicBERT
+  async detectToxicity(text) {
+    if (!this.isAvailable || !text) return this.mockToxicity(text);
     
-    // Check English slangs
-    for (const [level, words] of Object.entries(this.slangDatabase.english)) {
-      for (const word of words) {
-        if (lowerText.includes(word)) {
-          detectedSlangs.push({ word, language: 'english', severity: level });
-          if (level === 'severe') severity += 3;
-          else if (level === 'moderate') severity += 2;
-          else severity += 1;
-          categories.abusive = true;
-        }
-      }
+    try {
+      const response = await fetch(this.toxicUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ inputs: text })
+      });
+      
+      const scores = await response.json();
+      
+      const toxicity = scores.find(s => s.label === 'toxic')?.score || 0;
+      const severeToxicity = scores.find(s => s.label === 'severe_toxic')?.score || 0;
+      const insult = scores.find(s => s.label === 'insult')?.score || 0;
+      const obscene = scores.find(s => s.label === 'obscene')?.score || 0;
+      const threat = scores.find(s => s.label === 'threat')?.score || 0;
+      
+      const isInappropriate = toxicity > 0.6 || severeToxicity > 0.4 || threat > 0.5;
+      const severity = Math.ceil((toxicity + severeToxicity * 2) * 5);
+      
+      return {
+        isInappropriate,
+        severity: Math.min(5, severity),
+        confidence: Math.max(toxicity, severeToxicity, threat),
+        scores: { toxicity, severeToxicity, insult, obscene, threat },
+        detected: this.extractBadWords(text, scores)
+      };
+    } catch (err) {
+      console.error('ToxicBERT failed:', err);
+      return this.mockToxicity(text);
+    }
+  }
+
+  extractBadWords(text, scores) {
+    const severeWords = ['fuck', 'motherfucker', 'cunt', 'nigger', 'bhenchod', 'madarchod'];
+    const moderateWords = ['shit', 'bitch', 'asshole', 'chutiya', 'gandu'];
+    const detected = [];
+    
+    const lowerText = text.toLowerCase();
+    
+    for (const word of severeWords) {
+      if (lowerText.includes(word)) detected.push({ word, severity: 'severe' });
+    }
+    for (const word of moderateWords) {
+      if (lowerText.includes(word)) detected.push({ word, severity: 'moderate' });
     }
     
-    // Check Hindi slangs
-    for (const [level, words] of Object.entries(this.slangDatabase.hindi)) {
-      for (const word of words) {
-        if (lowerText.includes(word)) {
-          detectedSlangs.push({ word, language: 'hindi', severity: level });
-          if (level === 'severe') severity += 3;
-          else if (level === 'moderate') severity += 2;
-          else severity += 1;
-          categories.abusive = true;
-        }
-      }
+    return detected;
+  }
+
+  // Step 3: Complete audio analysis pipeline
+  async analyzeAudio(audioBuffer) {
+    // Step 1: Transcribe
+    const transcript = await this.transcribeAudio(audioBuffer);
+    
+    if (!transcript) {
+      return { isInappropriate: false, severity: 0, transcript: '' };
     }
     
-    // Check patterns
-    for (const pattern of this.slangDatabase.patterns) {
-      if (pattern.test(transcript)) {
-        detectedSlangs.push({ pattern: pattern.toString(), severity: 'high' });
-        severity += 3;
-        categories.threatening = true;
-      }
-    }
-    
-    // Normalize severity (1-5)
-    severity = Math.min(5, Math.max(1, Math.ceil(severity / 2)));
+    // Step 2: Analyze toxicity
+    const toxicity = await this.detectToxicity(transcript);
     
     return {
-      hasSlang: detectedSlangs.length > 0,
-      detectedSlangs,
-      severity,
-      categories,
-      shouldWarn: severity >= 2,
-      shouldReport: severity >= 3,
-      message: this.getWarningMessage(severity, detectedSlangs)
+      ...toxicity,
+      transcript,
+      timestamp: Date.now()
     };
   }
-  
-  getWarningMessage(severity, slangs) {
-    if (severity >= 4) {
-      return '⚠️ Severe policy violation detected. This has been reported.';
-    } else if (severity >= 3) {
-      return '🚫 Inappropriate language detected. Please maintain respectful communication.';
-    } else if (severity >= 2) {
-      return '⚠️ Please avoid using inappropriate language.';
-    }
-    return 'Please keep conversations respectful.';
+
+  // Fallback methods for testing without API
+  mockTranscribe() {
+    return 'sample speech';
+  }
+
+  mockToxicity(text) {
+    const lowerText = text.toLowerCase();
+    const badWords = ['fuck', 'shit', 'bitch', 'asshole'];
+    const found = badWords.filter(w => lowerText.includes(w));
+    
+    return {
+      isInappropriate: found.length > 0,
+      severity: found.length > 0 ? Math.min(3, found.length) : 0,
+      confidence: found.length > 0 ? 0.7 : 0,
+      detected: found.map(w => ({ word: w, severity: 'moderate' }))
+    };
   }
 }
 
-module.exports = new AudioModerationService();
+module.exports = new AIModerationService();

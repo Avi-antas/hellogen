@@ -12,17 +12,22 @@
   "license": "ISC",
   "description": "Video Chat Backend with WebRTC signaling",
   "dependencies": {
+    "@getbrevo/brevo": "^5.0.4",
+    "@mediapipe/hands": "^0.4.1675469240",
     "bcryptjs": "^2.4.3",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "express-rate-limit": "^8.4.1",
+    "form-data": "^4.0.5",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.0.3",
-    "nodemailer": "^8.0.7",
+    "multer": "^2.1.1",
+    "node-fetch": "^2.7.0",
     "redis": "^5.12.1",
+    "sib-api-v3-sdk": "^8.5.0",
     "socket.io": "^4.5.4"
   },
   "devDependencies": {

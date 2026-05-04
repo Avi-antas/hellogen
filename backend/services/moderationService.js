@@ -1,7 +1,7 @@
 const User = require('../models/user');
 const Report = require('../models/report');
 const aiDetection = require('./aiDetectionService');
-const emailService = require('../utils/emailService');
+const emailService = require('./emailService');
 
 class ModerationService {
   async handleRedFlag(reporterId, reportedUserId, reason, chatSessionId, guestIp = null) {
@@ -31,6 +31,7 @@ class ModerationService {
     } else if (guestIp) {
       return await this.handleGuestViolation(guestIp);
     }
+    await emailService.sendViolationEmail(user.email, user.username, suspensionType, reason);
   }
   
   async handleAuthUserViolation(user, severity) {

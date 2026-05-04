@@ -1,17 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login - Hellogen</title>
+  <title>Login - Live Connect</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -19,31 +13,18 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: 20px;
     }
-
     .auth-container {
       background: white;
       border-radius: 30px;
       padding: 40px;
       max-width: 450px;
-      width: 90%;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
     }
-
-    h2 {
-      margin-bottom: 30px;
-      color: #333;
-    }
-
-    .step {
-      display: none;
-    }
-
-    .step.active {
-      display: block;
-    }
-
-    input,
-    .avatar-selector {
+    h2 { margin-bottom: 20px; color: #333; text-align: center; }
+    input {
       width: 100%;
       padding: 15px;
       margin: 10px 0;
@@ -51,32 +32,6 @@
       border-radius: 15px;
       font-size: 16px;
     }
-
-    .avatar-options {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      margin: 20px 0;
-    }
-
-    .avatar-option {
-      width: 70px;
-      height: 70px;
-      border-radius: 50%;
-      cursor: pointer;
-      border: 2px solid transparent;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 40px;
-    }
-
-    .avatar-option.selected {
-      border-color: #667eea;
-      transform: scale(1.05);
-    }
-
     .btn {
       width: 100%;
       padding: 15px;
@@ -88,68 +43,72 @@
       cursor: pointer;
       margin-top: 20px;
     }
-
-    .error {
-      color: red;
-      font-size: 12px;
-      margin-top: 5px;
+    .step { display: none; }
+    .step.active { display: block; }
+    .error { color: red; font-size: 12px; margin-top: 5px; text-align: center; }
+    .success { color: green; font-size: 12px; margin-top: 5px; text-align: center; }
+    .avatar-options {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 20px 0;
     }
-
-    .success {
-      color: green;
-      font-size: 12px;
-      margin-top: 5px;
+    .avatar-option {
+      padding: 15px;
+      border-radius: 50%;
+      cursor: pointer;
+      text-align: center;
+      font-size: 30px;
+      background: #f0f0f0;
+      transition: all 0.2s;
     }
+    .avatar-option.selected { border: 3px solid #667eea; transform: scale(1.05); }
+    .helper-text { font-size: 12px; color: #999; text-align: center; margin-top: 10px; }
   </style>
 </head>
-
 <body>
   <div class="auth-container">
     <div id="step1" class="step active">
-      <h2>📱 Login with Phone</h2>
-      <input type="tel" id="phoneNumber" placeholder="Enter phone number" />
-      <button class="btn" onclick="sendOTP()">Send OTP</button>
-      <div class="error" id="phoneError"></div>
-      <div class="success" id="phoneSuccess"></div>
+      <h2>📧 Login with Email</h2>
+      <input type="email" id="email" placeholder="your@email.com" />
+      <div class="helper-text">We'll send you a 6-digit OTP</div>
+      <div id="emailError" class="error"></div>
+      <div id="emailSuccess" class="success"></div>
+      <button class="btn" id="sendOtpBtn">Send OTP</button>
     </div>
 
     <div id="step2" class="step">
       <h2>🔐 Verify OTP</h2>
       <input type="text" id="otpCode" placeholder="Enter 6-digit OTP" maxlength="6" />
-      <button class="btn" onclick="verifyOTP()">Verify & Continue</button>
-      <div class="error" id="otpError"></div>
+      <div id="otpError" class="error"></div>
+      <button class="btn" id="verifyOtpBtn">Verify & Continue</button>
     </div>
 
     <div id="step3" class="step">
       <h2>👤 Complete Profile</h2>
       <input type="text" id="username" placeholder="Username" />
-      <input type="email" id="email" placeholder="Email" />
-
       <div class="avatar-selector">
         <p>Choose Profile Picture:</p>
         <div class="avatar-options" id="avatarOptions">
-          <div class="avatar-option" data-avatar="😀" style="background: #FFE5B4;">😀</div>
-          <div class="avatar-option" data-avatar="😎" style="background: #B4E5FF;">😎</div>
-          <div class="avatar-option" data-avatar="🎤" style="background: #FFB4E5;">🎤</div>
-          <div class="avatar-option" data-avatar="🎮" style="background: #E5FFB4;">🎮</div>
+          <div class="avatar-option" data-avatar="😀">😀</div>
+          <div class="avatar-option" data-avatar="😎">😎</div>
+          <div class="avatar-option" data-avatar="🎤">🎤</div>
+          <div class="avatar-option" data-avatar="🎮">🎮</div>
         </div>
       </div>
-
-      <button class="btn" onclick="completeProfile()">Complete Setup</button>
-      <div class="error" id="profileError"></div>
+      <div id="profileError" class="error"></div>
+      <button class="btn" id="completeProfileBtn">Complete Setup</button>
     </div>
   </div>
 
   <script>
-    // Backend URL configuration
     const BACKEND_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  ? 'http://localhost:5000'
-  : 'https://hellogen.onrender.com';
+      ? 'http://localhost:5000'
+      : 'https://hellogen.onrender.com';
 
+    let email = '';
     let selectedAvatar = '😀';
-    let phoneNumber = '';
 
-    // Avatar selection
     document.querySelectorAll('.avatar-option').forEach(opt => {
       opt.addEventListener('click', () => {
         document.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
@@ -159,154 +118,126 @@
     });
 
     async function sendOTP() {
-      phoneNumber = document.getElementById('phoneNumber').value;
-      if (!phoneNumber) {
-        document.getElementById('phoneError').innerText = 'Phone number required';
-        return;
-      }
+      email = document.getElementById('email').value;
+      const errorDiv = document.getElementById('emailError');
+      const successDiv = document.getElementById('emailSuccess');
 
-      document.getElementById('phoneError').innerText = '';
-      document.getElementById('phoneSuccess').innerText = 'Sending OTP...';
+      if (!email) { errorDiv.innerText = 'Email required'; return; }
+      if (!email.includes('@')) { errorDiv.innerText = 'Valid email required'; return; }
+
+      errorDiv.innerText = '';
+      successDiv.innerHTML = 'Sending OTP...';
 
       try {
-        // Correct path: /auth/send-otp (not /api/auth/send-otp)
-        const response = await fetch(`${BACKEND_URL}/auth/send-otp`, {
+        const response = await fetch(`${BACKEND_URL}/auth/send-email-otp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phoneNumber })
+          body: JSON.stringify({ email })
         });
-
         const data = await response.json();
-
         if (data.success) {
-          document.getElementById('phoneSuccess').innerText = `OTP sent! Demo OTP: ${data.otp}`;
+          successDiv.innerHTML = '✅ OTP sent to your email!';
           document.getElementById('step1').classList.remove('active');
           document.getElementById('step2').classList.add('active');
         } else {
-          document.getElementById('phoneError').innerText = data.message;
-          document.getElementById('phoneSuccess').innerText = '';
+          errorDiv.innerText = data.message;
+          successDiv.innerHTML = '';
         }
       } catch (err) {
-        console.error('Send OTP error:', err);
-        document.getElementById('phoneError').innerText = 'Server error. Is backend running?';
-        document.getElementById('phoneSuccess').innerText = '';
+        errorDiv.innerText = 'Server error. Try again.';
+        successDiv.innerHTML = '';
       }
     }
 
     async function verifyOTP() {
-  const otp = document.getElementById('otpCode').value;
-  if (!otp) {
-    document.getElementById('otpError').innerText = 'OTP required';
-    return;
-  }
-  
-  console.log('Verifying OTP:', { phoneNumber, otp });
-  
-  try {
-    const response = await fetch(`${BACKEND_URL}/auth/verify-otp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        phoneNumber: phoneNumber, 
-        otpCode: otp 
-      })
-    });
-    
-    const data = await response.json();
-    console.log('Verify response:', data);
-    
-    if (data.success) {
-      localStorage.setItem('tempToken', data.tempToken);
-      
-      // Check if user already has complete profile
-      if (data.hasCompleteProfile === true) {
-        console.log('✅ Existing user with complete profile - skipping profile setup');
-        
-        // Get full token for existing user
-        const completeResponse = await fetch(`${BACKEND_URL}/auth/complete-profile`, {
+      const otp = document.getElementById('otpCode').value;
+      const errorDiv = document.getElementById('otpError');
+
+      if (!otp) { errorDiv.innerText = 'OTP required'; return; }
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/auth/verify-email-otp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tempToken: data.tempToken,
-            skipProfile: true,
-            existingUser: true
-          })
+          body: JSON.stringify({ email, otpCode: otp })
         });
-        
-        const completeData = await completeResponse.json();
-        console.log('Complete profile response:', completeData);
-        
-        if (completeData.success) {
-          localStorage.setItem('token', completeData.token);
-          localStorage.setItem('userId', completeData.user.id);
-          localStorage.removeItem('tempToken');
-          localStorage.removeItem('isGuest');
-          console.log('✅ Redirecting to rules page...');
-          window.location.href = './rules.html';
+        const data = await response.json();
+
+        if (data.success) {
+          localStorage.setItem('tempToken', data.tempToken);
+          localStorage.setItem('userEmail', data.email);
+
+          if (data.hasProfile === true) {
+            const profileResponse = await fetch(`${BACKEND_URL}/auth/complete-profile-email`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                tempToken: data.tempToken,
+                username: data.username || email.split('@')[0],
+                profilePic: '😀'
+              })
+            });
+            const profileData = await profileResponse.json();
+            if (profileData.success) {
+              localStorage.setItem('token', profileData.token);
+              localStorage.setItem('userId', profileData.user.id);
+              localStorage.removeItem('tempToken');
+              localStorage.removeItem('isGuest');
+              window.location.href = 'rules.html';
+            } else {
+              errorDiv.innerText = profileData.message;
+            }
+          } else {
+            document.getElementById('step2').classList.remove('active');
+            document.getElementById('step3').classList.add('active');
+          }
         } else {
-          document.getElementById('otpError').innerText = completeData.message;
+          errorDiv.innerText = data.message;
         }
-      } else {
-        // New user or incomplete profile - show profile setup
-        console.log('🆕 New user or incomplete profile - showing profile setup');
-        document.getElementById('step2').classList.remove('active');
-        document.getElementById('step3').classList.add('active');
+      } catch (err) {
+        console.error('Verify OTP error:', err);
+        errorDiv.innerText = 'Verification failed. Please try again.';
       }
-    } else {
-      document.getElementById('otpError').innerText = data.message;
     }
-  } catch (err) {
-    console.error('Verify OTP error:', err);
-    document.getElementById('otpError').innerText = 'Server error: ' + err.message;
-  }
-}
 
     async function completeProfile() {
       const username = document.getElementById('username').value;
-      const email = document.getElementById('email').value;
+      const errorDiv = document.getElementById('profileError');
 
-      if (!username || !email) {
-        document.getElementById('profileError').innerText = 'All fields required';
-        return;
-      }
+      if (!username) { errorDiv.innerText = 'Username required'; return; }
 
       const tempToken = localStorage.getItem('tempToken');
-      console.log('Complete profile with tempToken:', tempToken?.substring(0, 50));
-
-      if (!tempToken) {
-        document.getElementById('profileError').innerText = 'Session expired. Please login again.';
-        return;
-      }
+      if (!tempToken) { errorDiv.innerText = 'Session expired. Please login again.'; return; }
 
       try {
-        const response = await fetch(`${BACKEND_URL}/auth/complete-profile`, {
+        const response = await fetch(`${BACKEND_URL}/auth/complete-profile-email`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tempToken: tempToken,
-            username,
-            email,
-            profilePic: selectedAvatar
-          })
+          body: JSON.stringify({ tempToken, username, profilePic: selectedAvatar })
         });
-
         const data = await response.json();
-        console.log('Complete profile response:', data);
 
         if (data.success) {
           localStorage.setItem('token', data.token);
           localStorage.setItem('userId', data.user.id);
           localStorage.removeItem('tempToken');
-          window.location.href = './rules.html';
+          localStorage.removeItem('isGuest');
+          window.location.href = 'rules.html';
         } else {
-          document.getElementById('profileError').innerText = data.message;
+          errorDiv.innerText = data.message;
         }
       } catch (err) {
         console.error('Complete profile error:', err);
-        document.getElementById('profileError').innerText = 'Server error: ' + err.message;
+        errorDiv.innerText = 'Server error. Please try again.';
       }
     }
+
+    document.getElementById('sendOtpBtn').addEventListener('click', sendOTP);
+    document.getElementById('verifyOtpBtn').addEventListener('click', verifyOTP);
+    document.getElementById('completeProfileBtn').addEventListener('click', completeProfile);
+
+    document.getElementById('email').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendOTP(); });
+    document.getElementById('otpCode').addEventListener('keypress', (e) => { if (e.key === 'Enter') verifyOTP(); });
   </script>
 </body>
-
 </html>
