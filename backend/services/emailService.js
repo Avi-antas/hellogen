@@ -9,7 +9,7 @@ class EmailService {
 
   init() {
     if (!this.apiKey) {
-      console.log('📧 Email service: mock mode (no API key)');
+      console.log('⚠️ BREVO_API_KEY not found. Emails will be logged to console (MOCK MODE)');
       return;
     }
 
@@ -19,17 +19,20 @@ class EmailService {
         timeoutInSeconds: 30,
         maxRetries: 2,
       });
-      console.log('✅ Brevo v5 initialized – real emails will be sent');
+      console.log('✅ Brevo email service initialized - REAL emails will be sent');
     } catch (err) {
       console.error('❌ Brevo init failed:', err.message);
+      this.brevo = null;
     }
   }
 
   async sendOTPEmail(email, otp) {
+    // Mock mode when Brevo not available
     if (!this.brevo) {
       console.log(`\n📧 ===== OTP EMAIL (MOCK) =====`);
       console.log(`To: ${email}`);
       console.log(`OTP: ${otp}`);
+      console.log(`Valid for: 10 minutes`);
       console.log(`================================\n`);
       return true;
     }
@@ -39,17 +42,17 @@ class EmailService {
         subject: '🔐 Your Login OTP - Live Connect',
         htmlContent: this.getOTPHTML(otp),
         sender: {
-          name: 'hellogen',
-          email: 'avishekdas478@gmail.com',  // ✅ Changed to your verified Gmail
+          name: 'Live Connect',
+          email: 'avishekdas478@gmail.com',  // ✅ Your verified Gmail as sender
         },
         to: [{ email }],
       });
 
-      console.log(`✅ OTP email sent to ${email} (${result?.messageId || 'ok'})`);
+      console.log(`✅ OTP email sent to ${email}`);
       return true;
     } catch (error) {
       console.error('❌ OTP email failed:', error.message);
-      console.log(`💡 Fallback – OTP for ${email}: ${otp}`);
+      console.log(`💡 OTP for ${email}: ${otp}`);
       return false;
     }
   }
@@ -66,17 +69,17 @@ class EmailService {
     }
 
     try {
-      const result = await this.brevo.transactionalEmails.sendTransacEmail({
+      await this.brevo.transactionalEmails.sendTransacEmail({
         subject: `⚠️ Account ${suspensionType} – Live Connect`,
         htmlContent: this.getViolationHTML(username, suspensionType, reason),
         sender: {
           name: 'Live Connect',
-          email: 'avishekdas478@gmail.com',  // ✅ Changed
+          email: 'avishekdas478@gmail.com',
         },
         to: [{ email, name: username }],
       });
 
-      console.log(`✅ Violation email sent to ${email} (${result?.messageId || 'ok'})`);
+      console.log(`✅ Violation email sent to ${email}`);
       return true;
     } catch (error) {
       console.error('❌ Violation email failed:', error.message);
@@ -86,22 +89,22 @@ class EmailService {
 
   async sendWelcomeEmail(email, username) {
     if (!this.brevo) {
-      console.log(`📧 WELCOME EMAIL (MOCK) to: ${email} (user: ${username})`);
+      console.log(`📧 WELCOME EMAIL (MOCK) to: ${email}`);
       return true;
     }
 
     try {
-      const result = await this.brevo.transactionalEmails.sendTransacEmail({
+      await this.brevo.transactionalEmails.sendTransacEmail({
         subject: 'Welcome to Live Connect! 🎉',
         htmlContent: this.getWelcomeHTML(username),
         sender: {
           name: 'Live Connect',
-          email: 'avishekdas478@gmail.com',  // ✅ Changed
+          email: 'avishekdas478@gmail.com',
         },
         to: [{ email, name: username }],
       });
 
-      console.log(`✅ Welcome email sent to ${email} (${result?.messageId || 'ok'})`);
+      console.log(`✅ Welcome email sent to ${email}`);
       return true;
     } catch (error) {
       console.error('❌ Welcome email failed:', error.message);
@@ -109,7 +112,6 @@ class EmailService {
     }
   }
 
-  // Keep all your HTML templates as they are (getOTPHTML, getViolationHTML, getWelcomeHTML)
   getOTPHTML(otp) {
     return `
       <!DOCTYPE html>
