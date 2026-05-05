@@ -593,46 +593,77 @@
     }
 
     async function startGestureMonitoring() {
-      const videoElement = document.getElementById('remoteVideo');
-      if (!videoElement) return;
+  console.log('🎯 Starting gesture monitoring...');
+  
+  // Wait for remote video element to be ready
+  let videoElement = document.getElementById('remoteVideo');
+  
+  // If not ready, wait and retry
+  if (!videoElement) {
+    console.log('⏳ Waiting for remote video element...');
+    let attempts = 0;
+    while (!videoElement && attempts < 20) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      videoElement = document.getElementById('remoteVideo');
+      attempts++;
+    }
+  }
+  
+  if (!videoElement) {
+    console.error('❌ Remote video element not found after waiting');
+    return;
+  }
+  
+  console.log('✅ Remote video element found, initializing MediaPipe...');
 
-      handsDetector = new Hands({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-      });
+  try {
+    handsDetector = new Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
 
-      handsDetector.setOptions({
-        maxNumHands: 2,
-        modelComplexity: 1,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5
-      });
+    handsDetector.setOptions({
+      maxNumHands: 2,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5
+    });
 
-      handsDetector.onResults((results) => {
-        if (results.multiHandLandmarks) {
-          for (const landmarks of results.multiHandLandmarks) {
-            const gesture = classifyGesture(landmarks);
-            if (gesture.isOffensive && gesture.confidence > 0.7) {
-              handleViolation({
-                type: 'offensive_gesture',
-                gesture: gesture.name,
-                severity: 4,
-                confidence: gesture.confidence
-              });
-            }
+    handsDetector.onResults((results) => {
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        for (const landmarks of results.multiHandLandmarks) {
+          const gesture = classifyGesture(landmarks);
+          if (gesture.isOffensive && gesture.confidence > 0.7) {
+            console.log('🚨 Offensive gesture detected:', gesture.name);
+            handleViolation({
+              type: 'offensive_gesture',
+              gesture: gesture.name,
+              severity: 4,
+              confidence: gesture.confidence
+            });
           }
         }
-      });
+      }
+    });
 
-      const processVideo = async () => {
-        if (videoElement && videoElement.readyState >= 2 && handsDetector) {
+    // Process video frames
+    const processVideo = async () => {
+      if (videoElement && videoElement.readyState >= 2 && handsDetector) {
+        try {
           await handsDetector.send({ image: videoElement });
+        } catch (err) {
+          // Silently fail frame processing
         }
-        requestAnimationFrame(processVideo);
-      };
+      }
+      requestAnimationFrame(processVideo);
+    };
 
-      processVideo();
-      console.log('✅ Gesture monitoring active');
-    }
+    processVideo();
+    console.log('✅ Gesture monitoring active - MediaPipe ready');
+    
+  } catch (err) {
+    console.error('❌ Gesture monitoring failed:', err);
+  }
+}
 
     function classifyGesture(landmarks) {
       const indexTip = landmarks[8];
