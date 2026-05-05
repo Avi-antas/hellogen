@@ -132,33 +132,6 @@
       white-space: nowrap;
     }
 
-    .searching-topic-inline {
-      margin: 15px 0 10px 0;
-      padding: 10px 15px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 25px;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-      flex-wrap: wrap;
-    }
-
-    .searching-topic-inline strong {
-      color: #667eea;
-      font-size: 16px;
-      background: rgba(102, 126, 234, 0.2);
-      padding: 2px 8px;
-      border-radius: 20px;
-    }
-
-    .loading-content {
-      text-align: center;
-      color: white;
-      min-width: 280px;
-    }
-
     .timer {
       position: fixed;
       top: 20px;
@@ -217,26 +190,13 @@
     }
 
     @keyframes blink {
-      50% {
-        opacity: 0.5;
-      }
+      50% { opacity: 0.5; }
     }
 
     @keyframes pulse {
-      0% {
-        transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
-      }
-
-      70% {
-        transform: scale(1.1);
-        box-shadow: 0 0 0 10px rgba(255, 0, 0, 0);
-      }
-
-      100% {
-        transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
-      }
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
+      70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
     }
 
     @keyframes slideUp {
@@ -244,7 +204,6 @@
         opacity: 0;
         transform: translate(-50%, 20px);
       }
-
       to {
         opacity: 1;
         transform: translate(-50%, 0);
@@ -252,9 +211,7 @@
     }
 
     @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
+      to { transform: rotate(360deg); }
     }
 
     .loading-overlay {
@@ -307,12 +264,10 @@
         height: 50px;
         font-size: 20px;
       }
-
       .local-video {
         width: 100px;
         height: 133px;
       }
-
       .moderation-warning {
         font-size: 11px;
         white-space: normal;
@@ -333,8 +288,6 @@
     </div>
   </div>
 
-
-
   <div class="controls" id="controls">
     <button class="control-btn mute" id="muteBtn" onclick="toggleAudio()">🎤</button>
     <button class="control-btn next" onclick="nextUser()">⏭️</button>
@@ -350,11 +303,6 @@
     <div class="loading-content">
       <div class="spinner"></div>
       <p id="loadingText">Finding your match...</p>
-      <div class="searching-topic-inline" id="searchingTopicInline" style="display: none;">
-        <span>Searching for</span>
-        <strong id="searchingTopicNameInline">Coding</strong>
-        <span>partners...</span>
-      </div>
       <button class="cancel-queue" onclick="cancelQueue()">Cancel & Go Back</button>
     </div>
   </div>
@@ -440,22 +388,7 @@
         startAIModeration();
       });
 
-      socket.on('matched', async (id, topic) => {
-        partnerId = id;
-        isMatched = true;
-        partnerStartTime = Date.now();
-
-        // Hide loading and searching display
-        hideLoading();
-
-        // Show matched topic badge
-        const topicBadge = document.getElementById('topicBadge');
-        const matchedTopicSpan = document.getElementById('matchedTopic');
-        matchedTopicSpan.textContent = topic || selectedTopic;
-        topicBadge.style.display = 'flex';
-
-        updateStatus('🎉 Connected! Video call active');
-
+      socket.on('offer', async (data) => {
         partnerId = data.from;
         isMatched = true;
         console.log('📥 Received offer');
@@ -525,28 +458,28 @@
     // ============================================
     // AI MODERATION SYSTEM
     // ============================================
-
+    
     // Audio Moderation (Whisper + ToxicBERT)
     async function startAudioMonitoring() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
+        
         mediaRecorder = new MediaRecorder(stream);
         mediaRecorder.ondataavailable = (event) => {
           if (event.data.size > 0) {
             audioChunks.push(event.data);
           }
         };
-
+        
         mediaRecorder.onstop = async () => {
           const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
           audioChunks = [];
           await analyzeAudioChunk(audioBlob);
         };
-
+        
         mediaRecorder.start(4000);
         console.log('✅ Audio monitoring active');
-
+        
       } catch (err) {
         console.error('Audio monitoring failed:', err);
       }
@@ -555,15 +488,15 @@
     async function analyzeAudioChunk(audioBlob) {
       const formData = new FormData();
       formData.append('audio', audioBlob);
-
+      
       try {
         const response = await fetch(`${BACKEND_URL}/moderation/audio`, {
           method: 'POST',
           body: formData
         });
-
+        
         const result = await response.json();
-
+        
         if (result.isInappropriate && result.confidence > 0.6) {
           handleViolation({
             type: 'audio_slang',
@@ -582,18 +515,18 @@
     async function startGestureMonitoring() {
       const videoElement = document.getElementById('remoteVideo');
       if (!videoElement) return;
-
+      
       handsDetector = new Hands({
         locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
       });
-
+      
       handsDetector.setOptions({
         maxNumHands: 2,
         modelComplexity: 1,
         minDetectionConfidence: 0.5,
         minTrackingConfidence: 0.5
       });
-
+      
       handsDetector.onResults((results) => {
         if (results.multiHandLandmarks) {
           for (const landmarks of results.multiHandLandmarks) {
@@ -609,7 +542,7 @@
           }
         }
       });
-
+      
       // Process video frames
       const processVideo = async () => {
         if (videoElement && videoElement.readyState >= 2 && handsDetector) {
@@ -617,129 +550,59 @@
         }
         requestAnimationFrame(processVideo);
       };
-
+      
       processVideo();
       console.log('✅ Gesture monitoring active');
     }
 
     function classifyGesture(landmarks) {
-      // Get finger tip and joint positions
-      const thumbTip = landmarks[4];
       const indexTip = landmarks[8];
       const middleTip = landmarks[12];
       const ringTip = landmarks[16];
       const pinkyTip = landmarks[20];
-
-      const indexDip = landmarks[6];  // Middle joint
-      const middleDip = landmarks[10];
-      const ringDip = landmarks[14];
-      const pinkyDip = landmarks[18];
-
-      const indexMcp = landmarks[5];  // Base joint
-      const middleMcp = landmarks[9];
-      const ringMcp = landmarks[13];
-      const pinkyMcp = landmarks[17];
-
-      // Calculate finger extension (how straight each finger is)
-      const indexExtension = indexTip.y < indexDip.y;
-      const middleExtension = middleTip.y < middleDip.y;
-      const ringExtension = ringTip.y < ringDip.y;
-      const pinkyExtension = pinkyTip.y < pinkyDip.y;
-
-      // MIDDLE FINGER DETECTION - ONLY when other fingers are DOWN
-      const isMiddleOnlyUp = middleExtension &&
-        !indexExtension &&
-        !ringExtension &&
-        !pinkyExtension;
-
-      // Also check finger separation (middle finger significantly higher than index)
-      const middleVsIndex = (middleDip.y - indexDip.y) > 0.05;
-      const middleVsRing = (middleDip.y - ringDip.y) > 0.05;
-
-      const isMiddleFinger = isMiddleOnlyUp && (middleVsIndex || middleVsRing);
-
-      if (isMiddleFinger) {
+      
+      const indexIP = landmarks[6];
+      const middleIP = landmarks[10];
+      const ringIP = landmarks[14];
+      const pinkyIP = landmarks[18];
+      
+      // Middle finger detection
+      const isMiddleUp = middleTip.y < middleIP.y;
+      const isIndexDown = indexTip.y > indexIP.y;
+      const isRingDown = ringTip.y > ringIP.y;
+      const isPinkyDown = pinkyTip.y > pinkyIP.y;
+      
+      if (isMiddleUp && isIndexDown && isRingDown && isPinkyDown) {
         return { isOffensive: true, name: 'middle_finger', confidence: 0.95 };
       }
-
-      // FIST DETECTION - ALL fingers curled DOWN
-      const allFingersCurled = !indexExtension &&
-        !middleExtension &&
-        !ringExtension &&
-        !pinkyExtension;
-
-      // Also check if fingertips are below base joints
-      const fingersBelowBase = indexTip.y > indexMcp.y &&
-        middleTip.y > middleMcp.y &&
-        ringTip.y > ringMcp.y &&
-        pinkyTip.y > pinkyMcp.y;
-
-      const isFist = allFingersCurled && fingersBelowBase;
-
-      if (isFist) {
-        return { isOffensive: true, name: 'fist', confidence: 0.7 };
+      
+      // Fist detection
+      const allFingersDown = indexTip.y > indexIP.y &&
+                            middleTip.y > middleIP.y &&
+                            ringTip.y > ringIP.y &&
+                            pinkyTip.y > pinkyIP.y;
+      
+      if (allFingersDown) {
+        return { isOffensive: true, name: 'fist', confidence: 0.8 };
       }
-
-      // POINTING FINGER - Index extended, others curled
-      const isPointing = indexExtension &&
-        !middleExtension &&
-        !ringExtension &&
-        !pinkyExtension;
-
-      // Check if hand is pointing AT the camera (aggressive)
-      const handPosition = landmarks[0]; // Wrist position
-      const isPointingAtCamera = isPointing &&
-        (indexTip.z - handPosition.z) > 0.02;
-
-      if (isPointingAtCamera) {
-        return { isOffensive: true, name: 'pointing', confidence: 0.7 };
-      }
-
-      // Peace sign (V sign) - NOT offensive
-      const isPeaceSign = indexExtension && middleExtension &&
-        !ringExtension && !pinkyExtension;
-
-      if (isPeaceSign) {
-        return { isOffensive: false, name: 'peace', confidence: 0 };
-      }
-
-      // Normal wave - NOT offensive
-      const isWave = indexExtension && middleExtension &&
-        ringExtension && pinkyExtension;
-
-      if (isWave) {
-        return { isOffensive: false, name: 'wave', confidence: 0 };
-      }
-
+      
       return { isOffensive: false, name: 'normal', confidence: 0 };
     }
 
-    let lastViolationTime = 0;
-    const VIOLATION_COOLDOWN = 2000; // 2 seconds between violations
-
     function handleViolation(violation) {
-      const now = Date.now();
-
-      // Prevent multiple violations in quick succession
-      if (now - lastViolationTime < VIOLATION_COOLDOWN) {
-        console.log('Violation cooldown, ignoring...');
-        return;
-      }
-      lastViolationTime = now;
-
       console.log('🚨 VIOLATION DETECTED:', violation);
-
+      
       violationCount++;
-
+      
       let action = 'warn';
       let severity = violation.severity || 3;
-
+      
       if (severity >= 4 || violationCount >= 3) {
         action = 'end_call';
       } else if (severity >= 3 || violationCount >= 2) {
         action = 'red_flag';
       }
-
+      
       // Send to backend
       socket.emit('moderation-violation', {
         to: partnerId,
@@ -748,11 +611,11 @@
         action: action,
         violationCount: violationCount
       });
-
+      
       // Show warning
       let message = '';
       let color = '#ffa502';
-
+      
       if (violation.type === 'audio_slang') {
         message = `⚠️ Inappropriate language detected: ${violation.detected[0]?.word || 'abusive words'}`;
         color = '#ffa502';
@@ -760,14 +623,14 @@
         message = `🚫 Offensive gesture detected: ${violation.gesture}`;
         color = '#ff4757';
       }
-
+      
       if (action === 'end_call') {
         message = `❗ SEVERE: ${message} Call will end`;
         color = '#ff0000';
       }
-
+      
       showModerationWarning(message, color);
-
+      
       if (action === 'end_call') {
         setTimeout(() => {
           socket.emit("next");
@@ -790,11 +653,11 @@
       const redFlagBtn = document.getElementById('redFlagBtn');
       redFlagBtn.classList.add('visible');
       redFlagBtn.title = reason;
-
+      
       if (severity >= 4) {
         redFlagBtn.style.animation = 'pulse 0.5s infinite';
       }
-
+      
       // Auto-hide after 10 seconds
       setTimeout(() => {
         redFlagBtn.classList.remove('visible');
@@ -803,7 +666,7 @@
 
     function reportViolation() {
       if (!partnerId) return;
-
+      
       if (confirm('Report this user for policy violation?')) {
         socket.emit('report-violation', {
           reportedUserId: partnerId,
@@ -855,7 +718,10 @@
         if (isGuest === true) {
           startGuestTimer();
           document.getElementById('timer').classList.remove('hidden');
+        } else {
+          document.getElementById('timer').classList.add('hidden');
         }
+
       } catch (err) {
         console.error('Camera error:', err);
         alert('Camera/Microphone access required');
@@ -917,7 +783,6 @@
     // ============================================
     function cancelQueue() {
       console.log('Cancelling queue...');
-      hideLoading(); // This will also hide the searching topic
       if (socket && socket.connected) {
         socket.emit("next");
       }
@@ -944,40 +809,18 @@
       statusDiv.textContent = message;
     }
 
-    // Show searching topic in loading overlay
-    function showSearchingTopic(topic) {
-      const inlineDiv = document.getElementById('searchingTopicInline');
-      const topicNameSpan = document.getElementById('searchingTopicNameInline');
-      topicNameSpan.textContent = topic;
-      inlineDiv.style.display = 'flex';
-    }
-
-    function hideSearchingTopic() {
-      const inlineDiv = document.getElementById('searchingTopicInline');
-      inlineDiv.style.display = 'none';
-    }
-
-    // Update showLoading function
-    function showLoading(text = 'Finding your perfect match...') {
-      isLoading = true;
+    function showLoading(text) {
       const overlay = document.getElementById('loadingOverlay');
       const textEl = document.getElementById('loadingText');
       textEl.textContent = text;
       overlay.classList.remove('hidden');
-
-      // Show searching topic if we have a selected topic
-      if (selectedTopic) {
-        showSearchingTopic(selectedTopic);
-      }
     }
 
-    // Update hideLoading function
     function hideLoading() {
-      isLoading = false;
       const overlay = document.getElementById('loadingOverlay');
       overlay.classList.add('hidden');
-      hideSearchingTopic(); // Hide the inline searching text
     }
+
     function toggleAudio() {
       if (localStream) {
         const audioTrack = localStream.getAudioTracks()[0];
