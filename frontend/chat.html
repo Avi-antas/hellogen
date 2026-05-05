@@ -145,27 +145,6 @@
       white-space: nowrap;
     }
 
-    .searching-topic-inline {
-      margin: 15px 0 10px 0;
-      padding: 10px 15px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 25px;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-      flex-wrap: wrap;
-    }
-
-    .searching-topic-inline strong {
-      color: #667eea;
-      font-size: 16px;
-      background: rgba(102, 126, 234, 0.2);
-      padding: 2px 8px;
-      border-radius: 20px;
-    }
-
     .timer {
       position: fixed;
       top: 20px;
@@ -224,44 +203,22 @@
     }
 
     @keyframes blink {
-      50% {
-        opacity: 0.5;
-      }
+      50% { opacity: 0.5; }
     }
 
     @keyframes pulse {
-      0% {
-        transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
-      }
-
-      70% {
-        transform: scale(1.1);
-        box-shadow: 0 0 0 10px rgba(255, 0, 0, 0);
-      }
-
-      100% {
-        transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
-      }
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
+      70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
     }
 
     @keyframes slideUp {
-      from {
-        opacity: 0;
-        transform: translate(-50%, 20px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translate(-50%, 0);
-      }
+      from { opacity: 0; transform: translate(-50%, 20px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
     }
 
     @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
+      to { transform: rotate(360deg); }
     }
 
     .loading-overlay {
@@ -297,6 +254,27 @@
       margin: 0 auto 20px;
     }
 
+    .searching-topic-inline {
+      margin: 15px 0 10px 0;
+      padding: 10px 15px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 25px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .searching-topic-inline strong {
+      color: #667eea;
+      font-size: 16px;
+      background: rgba(102, 126, 234, 0.2);
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+
     .cancel-queue {
       margin-top: 20px;
       padding: 10px 20px;
@@ -309,23 +287,9 @@
     }
 
     @media (max-width: 768px) {
-      .control-btn {
-        width: 50px;
-        height: 50px;
-        font-size: 20px;
-      }
-
-      .local-video {
-        width: 100px;
-        height: 133px;
-      }
-
-      .moderation-warning {
-        font-size: 11px;
-        white-space: normal;
-        text-align: center;
-        max-width: 90%;
-      }
+      .control-btn { width: 50px; height: 50px; font-size: 20px; }
+      .local-video { width: 100px; height: 133px; }
+      .moderation-warning { font-size: 11px; white-space: normal; text-align: center; max-width: 90%; }
     }
   </style>
 </head>
@@ -341,7 +305,7 @@
   </div>
 
   <div class="topic-badge" id="topicBadge">
-    <span class="topic-icon">🎯</span>
+    <span>🎯</span>
     <span id="matchedTopic">Coding</span>
   </div>
 
@@ -351,7 +315,7 @@
     <button class="control-btn end" onclick="endCall()">📞</button>
   </div>
 
-  <button class="red-flag-btn" id="redFlagBtn">🚩</button>
+  <button class="red-flag-btn" id="redFlagBtn" onclick="reportViolation()">🚩</button>
 
   <div class="status-indicator" id="statusIndicator">Connecting...</div>
   <div class="timer hidden" id="timer"></div>
@@ -434,6 +398,7 @@
         hideLoading();
       });
 
+      // SINGLE matched event handler (fixed)
       socket.on('matched', (id, topic) => {
         partnerId = id;
         isMatched = true;
@@ -441,13 +406,13 @@
         console.log('🎯 Matched with', id, 'Topic:', topic);
 
         hideLoading();
-        
+
         // Show matched topic badge
         const topicBadge = document.getElementById('topicBadge');
         const matchedTopicSpan = document.getElementById('matchedTopic');
         matchedTopicSpan.textContent = topic || selectedTopic;
         topicBadge.style.display = 'flex';
-        
+
         updateStatus('🎉 Connected! Video call active');
 
         document.getElementById('localVideoWrapper').classList.remove('local-fullscreen');
@@ -458,7 +423,7 @@
         createPeer(isInitiator);
 
         // Start AI Moderation after match
-        startAIModeration();
+        setTimeout(() => startAIModeration(), 1000);
       });
 
       socket.on('offer', async (data) => {
@@ -515,17 +480,12 @@
         resetToWaiting();
       });
 
-      socket.on('partner-violation-detected', (data) => {
-        console.log('🚩 Partner violated rules:', data);
-        
-        let reason = '';
-        if (data.type === 'offensive_gesture') {
-          reason = `Offensive gesture detected: ${data.details.gesture}`;
-        } else if (data.type === 'audio_slang') {
-          reason = `Inappropriate language detected`;
-        }
-        
-        showRedFlagWithOptions(reason, data.severity, data.details);
+      socket.on('show-red-flag', (data) => {
+        console.log('🚩 Red flag received:', data);
+        const redFlagBtn = document.getElementById('redFlagBtn');
+        redFlagBtn.classList.add('visible');
+        redFlagBtn.title = data.reason || 'Policy violation detected';
+        setTimeout(() => redFlagBtn.classList.remove('visible'), 10000);
       });
 
       socket.on('call-ended-violation', (data) => {
@@ -544,23 +504,17 @@
     async function startAudioMonitoring() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
         mediaRecorder = new MediaRecorder(stream);
         mediaRecorder.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            audioChunks.push(event.data);
-          }
+          if (event.data.size > 0) audioChunks.push(event.data);
         };
-
         mediaRecorder.onstop = async () => {
           const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
           audioChunks = [];
           await analyzeAudioChunk(audioBlob);
         };
-
         mediaRecorder.start(4000);
         console.log('✅ Audio monitoring active');
-
       } catch (err) {
         console.error('Audio monitoring failed:', err);
       }
@@ -569,22 +523,17 @@
     async function analyzeAudioChunk(audioBlob) {
       const formData = new FormData();
       formData.append('audio', audioBlob);
-
       try {
         const response = await fetch(`${BACKEND_URL}/moderation/audio`, {
           method: 'POST',
           body: formData
         });
-
         const result = await response.json();
-
         if (result.isInappropriate && result.confidence > 0.6) {
           handleViolation({
             type: 'audio_slang',
             detected: result.detected || [],
-            transcript: result.transcript,
-            severity: result.severity || 3,
-            confidence: result.confidence
+            severity: result.severity || 3
           });
         }
       } catch (err) {
@@ -592,78 +541,70 @@
       }
     }
 
+    // GESTURE MODERATION - FIXED VERSION
     async function startGestureMonitoring() {
-  console.log('🎯 Starting gesture monitoring...');
-  
-  // Wait for remote video element to be ready
-  let videoElement = document.getElementById('remoteVideo');
-  
-  // If not ready, wait and retry
-  if (!videoElement) {
-    console.log('⏳ Waiting for remote video element...');
-    let attempts = 0;
-    while (!videoElement && attempts < 20) {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      videoElement = document.getElementById('remoteVideo');
-      attempts++;
-    }
-  }
-  
-  if (!videoElement) {
-    console.error('❌ Remote video element not found after waiting');
-    return;
-  }
-  
-  console.log('✅ Remote video element found, initializing MediaPipe...');
+      console.log('🎯 Starting gesture monitoring...');
+      
+      let videoElement = document.getElementById('remoteVideo');
+      
+      // Wait for video element
+      let attempts = 0;
+      while (!videoElement && attempts < 20) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        videoElement = document.getElementById('remoteVideo');
+        attempts++;
+      }
+      
+      if (!videoElement) {
+        console.error('❌ Remote video element not found');
+        return;
+      }
+      
+      console.log('✅ Remote video found, initializing MediaPipe...');
 
-  try {
-    handsDetector = new Hands({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-    });
+      try {
+        handsDetector = new Hands({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
 
-    handsDetector.setOptions({
-      maxNumHands: 2,
-      modelComplexity: 1,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5
-    });
+        handsDetector.setOptions({
+          maxNumHands: 2,
+          modelComplexity: 1,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5
+        });
 
-    handsDetector.onResults((results) => {
-      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-        for (const landmarks of results.multiHandLandmarks) {
-          const gesture = classifyGesture(landmarks);
-          if (gesture.isOffensive && gesture.confidence > 0.7) {
-            console.log('🚨 Offensive gesture detected:', gesture.name);
-            handleViolation({
-              type: 'offensive_gesture',
-              gesture: gesture.name,
-              severity: 4,
-              confidence: gesture.confidence
-            });
+        handsDetector.onResults((results) => {
+          if (results.multiHandLandmarks) {
+            for (const landmarks of results.multiHandLandmarks) {
+              const gesture = classifyGesture(landmarks);
+              if (gesture.isOffensive && gesture.confidence > 0.7) {
+                console.log('🚨 Offensive gesture detected:', gesture.name);
+                handleViolation({
+                  type: 'offensive_gesture',
+                  gesture: gesture.name,
+                  severity: 4
+                });
+              }
+            }
           }
-        }
-      }
-    });
+        });
 
-    // Process video frames
-    const processVideo = async () => {
-      if (videoElement && videoElement.readyState >= 2 && handsDetector) {
-        try {
-          await handsDetector.send({ image: videoElement });
-        } catch (err) {
-          // Silently fail frame processing
-        }
-      }
-      requestAnimationFrame(processVideo);
-    };
+        const processVideo = async () => {
+          if (videoElement && videoElement.readyState >= 2 && handsDetector) {
+            try {
+              await handsDetector.send({ image: videoElement });
+            } catch (err) {}
+          }
+          requestAnimationFrame(processVideo);
+        };
 
-    processVideo();
-    console.log('✅ Gesture monitoring active - MediaPipe ready');
-    
-  } catch (err) {
-    console.error('❌ Gesture monitoring failed:', err);
-  }
-}
+        processVideo();
+        console.log('✅ Gesture monitoring active');
+      } catch (err) {
+        console.error('❌ Gesture monitoring failed:', err);
+      }
+    }
 
     function classifyGesture(landmarks) {
       const indexTip = landmarks[8];
@@ -686,27 +627,19 @@
 
       const isMiddleOnlyUp = middleExtension && !indexExtension && !ringExtension && !pinkyExtension;
       const middleVsIndex = (middleDip.y - indexDip.y) > 0.05;
-      const middleVsRing = (middleDip.y - ringDip.y) > 0.05;
-      const isMiddleFinger = isMiddleOnlyUp && (middleVsIndex || middleVsRing);
+      const isMiddleFinger = isMiddleOnlyUp && middleVsIndex;
 
       if (isMiddleFinger) {
         return { isOffensive: true, name: 'middle_finger', confidence: 0.95 };
       }
 
       const allFingersCurled = !indexExtension && !middleExtension && !ringExtension && !pinkyExtension;
-      const fingersBelowBase = indexTip.y > indexMcp.y && middleTip.y > middleMcp.y && ringTip.y > ringMcp.y && pinkyTip.y > pinkyMcp.y;
+      const fingersBelowBase = indexTip.y > indexMcp.y && middleTip.y > middleMcp.y && 
+                               ringTip.y > ringMcp.y && pinkyTip.y > pinkyMcp.y;
       const isFist = allFingersCurled && fingersBelowBase;
 
       if (isFist) {
         return { isOffensive: true, name: 'fist', confidence: 0.7 };
-      }
-
-      const isPointing = indexExtension && !middleExtension && !ringExtension && !pinkyExtension;
-      const handPosition = landmarks[0];
-      const isPointingAtCamera = isPointing && (indexTip.z - handPosition.z) > 0.02;
-
-      if (isPointingAtCamera) {
-        return { isOffensive: true, name: 'pointing', confidence: 0.7 };
       }
 
       return { isOffensive: false, name: 'normal', confidence: 0 };
@@ -717,11 +650,7 @@
 
     function handleViolation(violation) {
       const now = Date.now();
-
-      if (now - lastViolationTime < VIOLATION_COOLDOWN) {
-        console.log('Violation cooldown, ignoring...');
-        return;
-      }
+      if (now - lastViolationTime < VIOLATION_COOLDOWN) return;
       lastViolationTime = now;
 
       console.log('🚨 VIOLATION DETECTED:', violation);
@@ -740,19 +669,12 @@
 
       showModerationWarning(message, color);
 
+      // Send red flag to partner
       socket.emit('partner-violation-detected', {
         to: partnerId,
         type: violation.type,
         details: violation,
         severity: violation.severity || 3
-      });
-
-      socket.emit('moderation-violation', {
-        to: partnerId,
-        type: violation.type,
-        details: violation,
-        action: 'red_flag_only',
-        violationCount: violationCount
       });
     }
 
@@ -766,84 +688,17 @@
       setTimeout(() => warningDiv.remove(), 4000);
     }
 
-    function showRedFlagWithOptions(reason, severity, violationData) {
-      const redFlagBtn = document.getElementById('redFlagBtn');
-      redFlagBtn.classList.add('visible');
-      redFlagBtn.title = reason;
-      redFlagBtn.dataset.violationType = violationData?.type || 'unknown';
-      redFlagBtn.dataset.violationDetails = JSON.stringify(violationData || {});
-      
-      if (severity >= 4) {
-        redFlagBtn.style.animation = 'pulse 0.5s infinite';
-      }
-      
-      redFlagBtn.onclick = () => showReportOptionsWithNext(violationData);
-      
-      setTimeout(() => {
-        redFlagBtn.classList.remove('visible');
-      }, 15000);
-    }
-
-    function showReportOptionsWithNext(violationData) {
-      const userChoice = confirm(
-        `⚠️ Inappropriate behavior detected!\n\n` +
-        `Choose:\n` +
-        `• OK - Report user\n` +
-        `• Cancel - Report & find new partner`
-      );
-      
-      if (userChoice === true) {
-        submitReportWithChoice(violationData, false);
-      } else {
-        submitReportWithChoice(violationData, true);
-      }
-    }
-
-    function submitReportWithChoice(violationData, findNewPartner) {
+    function reportViolation() {
       if (!partnerId) return;
-      
-      let reason = 'ai_detected_violation';
-      if (violationData?.type === 'offensive_gesture') {
-        reason = `offensive_gesture_${violationData.gesture}`;
-      } else if (violationData?.type === 'audio_slang') {
-        reason = 'abusive_language';
-      }
-      
-      fetch(`${BACKEND_URL}/api/report`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
+      if (confirm('Report this user for policy violation?')) {
+        socket.emit('report-violation', {
           reportedUserId: partnerId,
-          reason: reason,
-          chatSessionId: socket.id,
-          violationDetails: violationData
-        })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          showModerationWarning('✅ Report submitted. Thank you!', '#2ed573');
-          
-          if (findNewPartner) {
-            setTimeout(() => {
-              socket.emit("next");
-              cleanup();
-              resetToWaiting();
-            }, 1500);
-          } else {
-            document.getElementById('redFlagBtn').classList.remove('visible');
-          }
-        } else {
-          showModerationWarning('❌ Report failed', '#ff4757');
-        }
-      })
-      .catch(err => {
-        console.error('Report error:', err);
-        showModerationWarning('❌ Failed to submit report', '#ff4757');
-      });
+          reason: 'ai_detected_violation',
+          severity: 'high'
+        });
+        showModerationWarning('✅ Report submitted', '#2ed573');
+        document.getElementById('redFlagBtn').classList.remove('visible');
+      }
     }
 
     function startAIModeration() {
@@ -853,9 +708,7 @@
     }
 
     function stopAIModeration() {
-      if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-      }
+      if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
       if (handsDetector) {
         handsDetector.close();
         handsDetector = null;
@@ -867,11 +720,7 @@
     // ============================================
     async function startCamera() {
       try {
-        localStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true
-        });
-
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         document.getElementById('localVideo').srcObject = localStream;
 
         showLoading('Finding your match...');
@@ -928,42 +777,14 @@
       };
 
       if (localStream) {
-        localStream.getTracks().forEach(track => {
-          peer.addTrack(track, localStream);
-        });
+        localStream.getTracks().forEach(track => peer.addTrack(track, localStream));
       }
 
       if (isInitiator) {
         peer.createOffer()
           .then(offer => peer.setLocalDescription(offer))
-          .then(() => {
-            socket.emit("offer", { to: partnerId, offer: peer.localDescription });
-          })
+          .then(() => socket.emit("offer", { to: partnerId, offer: peer.localDescription }))
           .catch(err => console.error("Offer error:", err));
-      }
-    }
-
-    // ============================================
-    // QUEUE CONTROLS
-    // ============================================
-    function cancelQueue() {
-      console.log('Cancelling queue...');
-      hideLoading();
-      if (socket && socket.connected) {
-        socket.emit("next");
-      }
-      window.location.href = './topics.html';
-    }
-
-    function resetToWaiting() {
-      if (socket && socket.connected) {
-        showLoading('Finding new partner...');
-        updateStatus('Searching...');
-        socket.emit("joinQueue", {
-          interests: [selectedTopic],
-          userId: localStorage.getItem('userId'),
-          isGuest: isGuest
-        });
       }
     }
 
@@ -971,39 +792,24 @@
     // UI CONTROLS
     // ============================================
     function updateStatus(message) {
-      const statusDiv = document.getElementById('statusIndicator');
-      statusDiv.textContent = message;
+      document.getElementById('statusIndicator').textContent = message;
     }
 
-    function showSearchingTopic(topic) {
-      const inlineDiv = document.getElementById('searchingTopicInline');
-      const topicNameSpan = document.getElementById('searchingTopicNameInline');
-      topicNameSpan.textContent = topic;
-      inlineDiv.style.display = 'flex';
-    }
-
-    function hideSearchingTopic() {
-      const inlineDiv = document.getElementById('searchingTopicInline');
-      inlineDiv.style.display = 'none';
-    }
-
-    function showLoading(text = 'Finding your perfect match...') {
+    function showLoading(text) {
       isLoading = true;
       const overlay = document.getElementById('loadingOverlay');
-      const textEl = document.getElementById('loadingText');
-      textEl.textContent = text;
+      document.getElementById('loadingText').textContent = text;
       overlay.classList.remove('hidden');
-
       if (selectedTopic) {
-        showSearchingTopic(selectedTopic);
+        document.getElementById('searchingTopicNameInline').textContent = selectedTopic;
+        document.getElementById('searchingTopicInline').style.display = 'flex';
       }
     }
 
     function hideLoading() {
       isLoading = false;
-      const overlay = document.getElementById('loadingOverlay');
-      overlay.classList.add('hidden');
-      hideSearchingTopic();
+      document.getElementById('loadingOverlay').classList.add('hidden');
+      document.getElementById('searchingTopicInline').style.display = 'none';
     }
 
     function toggleAudio() {
@@ -1011,8 +817,7 @@
         const audioTrack = localStream.getAudioTracks()[0];
         if (audioTrack) {
           audioTrack.enabled = !audioTrack.enabled;
-          const btn = document.getElementById('muteBtn');
-          btn.textContent = audioTrack.enabled ? '🎤' : '🔇';
+          document.getElementById('muteBtn').textContent = audioTrack.enabled ? '🎤' : '🔇';
         }
       }
     }
@@ -1035,6 +840,24 @@
       }
     }
 
+    function cancelQueue() {
+      hideLoading();
+      if (socket && socket.connected) socket.emit("next");
+      window.location.href = './topics.html';
+    }
+
+    function resetToWaiting() {
+      if (socket && socket.connected) {
+        showLoading('Finding new partner...');
+        updateStatus('Searching...');
+        socket.emit("joinQueue", {
+          interests: [selectedTopic],
+          userId: localStorage.getItem('userId'),
+          isGuest: isGuest
+        });
+      }
+    }
+
     function cleanup() {
       if (peer) {
         peer.close();
@@ -1048,27 +871,17 @@
     // GUEST TIMER
     // ============================================
     function startGuestTimer() {
-      if (!isGuest) {
-        console.log('Auth user - no timer needed');
-        return;
-      }
-
+      if (!isGuest) return;
       console.log('Guest user - starting 5 min timer');
       let timeLeft = 300;
-
       guestTimerInterval = setInterval(() => {
         timeLeft--;
         const minutes = Math.floor(timeLeft / 60);
         const seconds = timeLeft % 60;
-
         const timerEl = document.getElementById('timer');
         timerEl.textContent = `⏱️ Guest: ${minutes}:${seconds.toString().padStart(2, '0')}`;
         timerEl.classList.remove('hidden');
-
-        if (timeLeft <= 60) {
-          timerEl.classList.add('warning');
-        }
-
+        if (timeLeft <= 60) timerEl.classList.add('warning');
         if (timeLeft <= 0) {
           clearInterval(guestTimerInterval);
           alert('Guest session expired. Please sign up to continue!');
