@@ -71,24 +71,6 @@
       transform: rotateY(180deg);
     }
 
-    .topic-badge {
-      position: fixed;
-      top: 80px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 8px 20px;
-      border-radius: 30px;
-      font-size: 14px;
-      font-weight: bold;
-      z-index: 15;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-      display: none;
-      align-items: center;
-      gap: 8px;
-    }
-
     .controls {
       position: fixed;
       bottom: 30px;
@@ -130,6 +112,11 @@
       color: white;
     }
 
+    .control-btn.cancel {
+      background: #ffa502;
+      color: white;
+    }
+
     .status-indicator {
       position: fixed;
       top: 20px;
@@ -143,6 +130,33 @@
       font-size: 14px;
       z-index: 15;
       white-space: nowrap;
+    }
+
+    .searching-topic-inline {
+      margin: 15px 0 10px 0;
+      padding: 10px 15px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 25px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .searching-topic-inline strong {
+      color: #667eea;
+      font-size: 16px;
+      background: rgba(102, 126, 234, 0.2);
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+
+    .loading-content {
+      text-align: center;
+      color: white;
+      min-width: 280px;
     }
 
     .timer {
@@ -203,22 +217,44 @@
     }
 
     @keyframes blink {
-      50% { opacity: 0.5; }
+      50% {
+        opacity: 0.5;
+      }
     }
 
     @keyframes pulse {
-      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
-      70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); }
-      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+      0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
+      }
+
+      70% {
+        transform: scale(1.1);
+        box-shadow: 0 0 0 10px rgba(255, 0, 0, 0);
+      }
+
+      100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
+      }
     }
 
     @keyframes slideUp {
-      from { opacity: 0; transform: translate(-50%, 20px); }
-      to { opacity: 1; transform: translate(-50%, 0); }
+      from {
+        opacity: 0;
+        transform: translate(-50%, 20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
     }
 
     @keyframes spin {
-      to { transform: rotate(360deg); }
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     .loading-overlay {
@@ -254,27 +290,6 @@
       margin: 0 auto 20px;
     }
 
-    .searching-topic-inline {
-      margin: 15px 0 10px 0;
-      padding: 10px 15px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 25px;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-      flex-wrap: wrap;
-    }
-
-    .searching-topic-inline strong {
-      color: #667eea;
-      font-size: 16px;
-      background: rgba(102, 126, 234, 0.2);
-      padding: 2px 8px;
-      border-radius: 20px;
-    }
-
     .cancel-queue {
       margin-top: 20px;
       padding: 10px 20px;
@@ -287,9 +302,23 @@
     }
 
     @media (max-width: 768px) {
-      .control-btn { width: 50px; height: 50px; font-size: 20px; }
-      .local-video { width: 100px; height: 133px; }
-      .moderation-warning { font-size: 11px; white-space: normal; text-align: center; max-width: 90%; }
+      .control-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+      }
+
+      .local-video {
+        width: 100px;
+        height: 133px;
+      }
+
+      .moderation-warning {
+        font-size: 11px;
+        white-space: normal;
+        text-align: center;
+        max-width: 90%;
+      }
     }
   </style>
 </head>
@@ -304,10 +333,7 @@
     </div>
   </div>
 
-  <div class="topic-badge" id="topicBadge">
-    <span>🎯</span>
-    <span id="matchedTopic">Coding</span>
-  </div>
+
 
   <div class="controls" id="controls">
     <button class="control-btn mute" id="muteBtn" onclick="toggleAudio()">🎤</button>
@@ -363,8 +389,6 @@
     let mediaRecorder = null;
     let audioChunks = [];
     let handsDetector = null;
-    let partnerStartTime = null;
-    let isLoading = false;
 
     // ============================================
     // CHECK AUTHENTICATION
@@ -398,13 +422,30 @@
         hideLoading();
       });
 
-      // SINGLE matched event handler (fixed)
-      socket.on('matched', (id, topic) => {
+      socket.on('matched', async (id) => {
+        partnerId = id;
+        isMatched = true;
+        console.log('🎯 Matched with', id);
+        updateStatus('🎉 Connected! Video call active');
+        hideLoading();
+
+        document.getElementById('localVideoWrapper').classList.remove('local-fullscreen');
+        document.getElementById('localVideoWrapper').classList.add('local-video');
+        document.getElementById('partnerVideoWrapper').classList.remove('partner-hidden');
+
+        const isInitiator = mySocketId < partnerId;
+        createPeer(isInitiator);
+
+        // Start AI Moderation after match
+        startAIModeration();
+      });
+
+      socket.on('matched', async (id, topic) => {
         partnerId = id;
         isMatched = true;
         partnerStartTime = Date.now();
-        console.log('🎯 Matched with', id, 'Topic:', topic);
 
+        // Hide loading and searching display
         hideLoading();
 
         // Show matched topic badge
@@ -415,21 +456,8 @@
 
         updateStatus('🎉 Connected! Video call active');
 
-        document.getElementById('localVideoWrapper').classList.remove('local-fullscreen');
-        document.getElementById('localVideoWrapper').classList.add('local-video');
-        document.getElementById('partnerVideoWrapper').classList.remove('partner-hidden');
-
-        const isInitiator = mySocketId < partnerId;
-        createPeer(isInitiator);
-
-        // Start AI Moderation after match
-        setTimeout(() => startAIModeration(), 1000);
-      });
-
-      socket.on('offer', async (data) => {
         partnerId = data.from;
         isMatched = true;
-        partnerStartTime = Date.now();
         console.log('📥 Received offer');
         updateStatus('📞 Connecting...');
         hideLoading();
@@ -482,10 +510,7 @@
 
       socket.on('show-red-flag', (data) => {
         console.log('🚩 Red flag received:', data);
-        const redFlagBtn = document.getElementById('redFlagBtn');
-        redFlagBtn.classList.add('visible');
-        redFlagBtn.title = data.reason || 'Policy violation detected';
-        setTimeout(() => redFlagBtn.classList.remove('visible'), 10000);
+        showRedFlag(data.reason || 'Policy violation detected', data.severity || 3);
       });
 
       socket.on('call-ended-violation', (data) => {
@@ -501,20 +526,27 @@
     // AI MODERATION SYSTEM
     // ============================================
 
+    // Audio Moderation (Whisper + ToxicBERT)
     async function startAudioMonitoring() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
         mediaRecorder = new MediaRecorder(stream);
         mediaRecorder.ondataavailable = (event) => {
-          if (event.data.size > 0) audioChunks.push(event.data);
+          if (event.data.size > 0) {
+            audioChunks.push(event.data);
+          }
         };
+
         mediaRecorder.onstop = async () => {
           const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
           audioChunks = [];
           await analyzeAudioChunk(audioBlob);
         };
+
         mediaRecorder.start(4000);
         console.log('✅ Audio monitoring active');
+
       } catch (err) {
         console.error('Audio monitoring failed:', err);
       }
@@ -523,17 +555,22 @@
     async function analyzeAudioChunk(audioBlob) {
       const formData = new FormData();
       formData.append('audio', audioBlob);
+
       try {
         const response = await fetch(`${BACKEND_URL}/moderation/audio`, {
           method: 'POST',
           body: formData
         });
+
         const result = await response.json();
+
         if (result.isInappropriate && result.confidence > 0.6) {
           handleViolation({
             type: 'audio_slang',
             detected: result.detected || [],
-            severity: result.severity || 3
+            transcript: result.transcript,
+            severity: result.severity || 3,
+            confidence: result.confidence
           });
         }
       } catch (err) {
@@ -541,141 +578,202 @@
       }
     }
 
-    // GESTURE MODERATION - FIXED VERSION
+    // Gesture Moderation (MediaPipe Hands)
     async function startGestureMonitoring() {
-      console.log('🎯 Starting gesture monitoring...');
-      
-      let videoElement = document.getElementById('remoteVideo');
-      
-      // Wait for video element
-      let attempts = 0;
-      while (!videoElement && attempts < 20) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        videoElement = document.getElementById('remoteVideo');
-        attempts++;
-      }
-      
-      if (!videoElement) {
-        console.error('❌ Remote video element not found');
-        return;
-      }
-      
-      console.log('✅ Remote video found, initializing MediaPipe...');
+      const videoElement = document.getElementById('remoteVideo');
+      if (!videoElement) return;
 
-      try {
-        handsDetector = new Hands({
-          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-        });
+      handsDetector = new Hands({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+      });
 
-        handsDetector.setOptions({
-          maxNumHands: 2,
-          modelComplexity: 1,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5
-        });
+      handsDetector.setOptions({
+        maxNumHands: 2,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+      });
 
-        handsDetector.onResults((results) => {
-          if (results.multiHandLandmarks) {
-            for (const landmarks of results.multiHandLandmarks) {
-              const gesture = classifyGesture(landmarks);
-              if (gesture.isOffensive && gesture.confidence > 0.7) {
-                console.log('🚨 Offensive gesture detected:', gesture.name);
-                handleViolation({
-                  type: 'offensive_gesture',
-                  gesture: gesture.name,
-                  severity: 4
-                });
-              }
+      handsDetector.onResults((results) => {
+        if (results.multiHandLandmarks) {
+          for (const landmarks of results.multiHandLandmarks) {
+            const gesture = classifyGesture(landmarks);
+            if (gesture.isOffensive && gesture.confidence > 0.7) {
+              handleViolation({
+                type: 'offensive_gesture',
+                gesture: gesture.name,
+                severity: 4,
+                confidence: gesture.confidence
+              });
             }
           }
-        });
+        }
+      });
 
-        const processVideo = async () => {
-          if (videoElement && videoElement.readyState >= 2 && handsDetector) {
-            try {
-              await handsDetector.send({ image: videoElement });
-            } catch (err) {}
-          }
-          requestAnimationFrame(processVideo);
-        };
+      // Process video frames
+      const processVideo = async () => {
+        if (videoElement && videoElement.readyState >= 2 && handsDetector) {
+          await handsDetector.send({ image: videoElement });
+        }
+        requestAnimationFrame(processVideo);
+      };
 
-        processVideo();
-        console.log('✅ Gesture monitoring active');
-      } catch (err) {
-        console.error('❌ Gesture monitoring failed:', err);
-      }
+      processVideo();
+      console.log('✅ Gesture monitoring active');
     }
 
     function classifyGesture(landmarks) {
+      // Get finger tip and joint positions
+      const thumbTip = landmarks[4];
       const indexTip = landmarks[8];
       const middleTip = landmarks[12];
       const ringTip = landmarks[16];
       const pinkyTip = landmarks[20];
-      const indexDip = landmarks[6];
+
+      const indexDip = landmarks[6];  // Middle joint
       const middleDip = landmarks[10];
       const ringDip = landmarks[14];
       const pinkyDip = landmarks[18];
-      const indexMcp = landmarks[5];
+
+      const indexMcp = landmarks[5];  // Base joint
       const middleMcp = landmarks[9];
       const ringMcp = landmarks[13];
       const pinkyMcp = landmarks[17];
 
+      // Calculate finger extension (how straight each finger is)
       const indexExtension = indexTip.y < indexDip.y;
       const middleExtension = middleTip.y < middleDip.y;
       const ringExtension = ringTip.y < ringDip.y;
       const pinkyExtension = pinkyTip.y < pinkyDip.y;
 
-      const isMiddleOnlyUp = middleExtension && !indexExtension && !ringExtension && !pinkyExtension;
+      // MIDDLE FINGER DETECTION - ONLY when other fingers are DOWN
+      const isMiddleOnlyUp = middleExtension &&
+        !indexExtension &&
+        !ringExtension &&
+        !pinkyExtension;
+
+      // Also check finger separation (middle finger significantly higher than index)
       const middleVsIndex = (middleDip.y - indexDip.y) > 0.05;
-      const isMiddleFinger = isMiddleOnlyUp && middleVsIndex;
+      const middleVsRing = (middleDip.y - ringDip.y) > 0.05;
+
+      const isMiddleFinger = isMiddleOnlyUp && (middleVsIndex || middleVsRing);
 
       if (isMiddleFinger) {
         return { isOffensive: true, name: 'middle_finger', confidence: 0.95 };
       }
 
-      const allFingersCurled = !indexExtension && !middleExtension && !ringExtension && !pinkyExtension;
-      const fingersBelowBase = indexTip.y > indexMcp.y && middleTip.y > middleMcp.y && 
-                               ringTip.y > ringMcp.y && pinkyTip.y > pinkyMcp.y;
+      // FIST DETECTION - ALL fingers curled DOWN
+      const allFingersCurled = !indexExtension &&
+        !middleExtension &&
+        !ringExtension &&
+        !pinkyExtension;
+
+      // Also check if fingertips are below base joints
+      const fingersBelowBase = indexTip.y > indexMcp.y &&
+        middleTip.y > middleMcp.y &&
+        ringTip.y > ringMcp.y &&
+        pinkyTip.y > pinkyMcp.y;
+
       const isFist = allFingersCurled && fingersBelowBase;
 
       if (isFist) {
         return { isOffensive: true, name: 'fist', confidence: 0.7 };
       }
 
+      // POINTING FINGER - Index extended, others curled
+      const isPointing = indexExtension &&
+        !middleExtension &&
+        !ringExtension &&
+        !pinkyExtension;
+
+      // Check if hand is pointing AT the camera (aggressive)
+      const handPosition = landmarks[0]; // Wrist position
+      const isPointingAtCamera = isPointing &&
+        (indexTip.z - handPosition.z) > 0.02;
+
+      if (isPointingAtCamera) {
+        return { isOffensive: true, name: 'pointing', confidence: 0.7 };
+      }
+
+      // Peace sign (V sign) - NOT offensive
+      const isPeaceSign = indexExtension && middleExtension &&
+        !ringExtension && !pinkyExtension;
+
+      if (isPeaceSign) {
+        return { isOffensive: false, name: 'peace', confidence: 0 };
+      }
+
+      // Normal wave - NOT offensive
+      const isWave = indexExtension && middleExtension &&
+        ringExtension && pinkyExtension;
+
+      if (isWave) {
+        return { isOffensive: false, name: 'wave', confidence: 0 };
+      }
+
       return { isOffensive: false, name: 'normal', confidence: 0 };
     }
 
     let lastViolationTime = 0;
-    const VIOLATION_COOLDOWN = 2000;
+    const VIOLATION_COOLDOWN = 2000; // 2 seconds between violations
 
     function handleViolation(violation) {
       const now = Date.now();
-      if (now - lastViolationTime < VIOLATION_COOLDOWN) return;
+
+      // Prevent multiple violations in quick succession
+      if (now - lastViolationTime < VIOLATION_COOLDOWN) {
+        console.log('Violation cooldown, ignoring...');
+        return;
+      }
       lastViolationTime = now;
 
       console.log('🚨 VIOLATION DETECTED:', violation);
+
       violationCount++;
 
+      let action = 'warn';
+      let severity = violation.severity || 3;
+
+      if (severity >= 4 || violationCount >= 3) {
+        action = 'end_call';
+      } else if (severity >= 3 || violationCount >= 2) {
+        action = 'red_flag';
+      }
+
+      // Send to backend
+      socket.emit('moderation-violation', {
+        to: partnerId,
+        type: violation.type,
+        details: violation,
+        action: action,
+        violationCount: violationCount
+      });
+
+      // Show warning
       let message = '';
       let color = '#ffa502';
 
       if (violation.type === 'audio_slang') {
-        message = `⚠️ Please avoid inappropriate language`;
+        message = `⚠️ Inappropriate language detected: ${violation.detected[0]?.word || 'abusive words'}`;
         color = '#ffa502';
       } else if (violation.type === 'offensive_gesture') {
-        message = `🚫 Please avoid offensive gestures`;
+        message = `🚫 Offensive gesture detected: ${violation.gesture}`;
         color = '#ff4757';
+      }
+
+      if (action === 'end_call') {
+        message = `❗ SEVERE: ${message} Call will end`;
+        color = '#ff0000';
       }
 
       showModerationWarning(message, color);
 
-      // Send red flag to partner
-      socket.emit('partner-violation-detected', {
-        to: partnerId,
-        type: violation.type,
-        details: violation,
-        severity: violation.severity || 3
-      });
+      if (action === 'end_call') {
+        setTimeout(() => {
+          socket.emit("next");
+          window.location.href = './topics.html';
+        }, 3000);
+      }
     }
 
     function showModerationWarning(message, color) {
@@ -688,15 +786,31 @@
       setTimeout(() => warningDiv.remove(), 4000);
     }
 
+    function showRedFlag(reason, severity) {
+      const redFlagBtn = document.getElementById('redFlagBtn');
+      redFlagBtn.classList.add('visible');
+      redFlagBtn.title = reason;
+
+      if (severity >= 4) {
+        redFlagBtn.style.animation = 'pulse 0.5s infinite';
+      }
+
+      // Auto-hide after 10 seconds
+      setTimeout(() => {
+        redFlagBtn.classList.remove('visible');
+      }, 10000);
+    }
+
     function reportViolation() {
       if (!partnerId) return;
+
       if (confirm('Report this user for policy violation?')) {
         socket.emit('report-violation', {
           reportedUserId: partnerId,
           reason: 'ai_detected_violation',
           severity: 'high'
         });
-        showModerationWarning('✅ Report submitted', '#2ed573');
+        showModerationWarning('✅ Report submitted. Thank you for keeping our community safe.', '#2ed573');
         document.getElementById('redFlagBtn').classList.remove('visible');
       }
     }
@@ -708,7 +822,9 @@
     }
 
     function stopAIModeration() {
-      if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+      }
       if (handsDetector) {
         handsDetector.close();
         handsDetector = null;
@@ -720,7 +836,11 @@
     // ============================================
     async function startCamera() {
       try {
-        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true
+        });
+
         document.getElementById('localVideo').srcObject = localStream;
 
         showLoading('Finding your match...');
@@ -777,14 +897,42 @@
       };
 
       if (localStream) {
-        localStream.getTracks().forEach(track => peer.addTrack(track, localStream));
+        localStream.getTracks().forEach(track => {
+          peer.addTrack(track, localStream);
+        });
       }
 
       if (isInitiator) {
         peer.createOffer()
           .then(offer => peer.setLocalDescription(offer))
-          .then(() => socket.emit("offer", { to: partnerId, offer: peer.localDescription }))
+          .then(() => {
+            socket.emit("offer", { to: partnerId, offer: peer.localDescription });
+          })
           .catch(err => console.error("Offer error:", err));
+      }
+    }
+
+    // ============================================
+    // QUEUE CONTROLS
+    // ============================================
+    function cancelQueue() {
+      console.log('Cancelling queue...');
+      hideLoading(); // This will also hide the searching topic
+      if (socket && socket.connected) {
+        socket.emit("next");
+      }
+      window.location.href = './topics.html';
+    }
+
+    function resetToWaiting() {
+      if (socket && socket.connected) {
+        showLoading('Finding new partner...');
+        updateStatus('Searching...');
+        socket.emit("joinQueue", {
+          interests: [selectedTopic],
+          userId: localStorage.getItem('userId'),
+          isGuest: isGuest
+        });
       }
     }
 
@@ -792,32 +940,51 @@
     // UI CONTROLS
     // ============================================
     function updateStatus(message) {
-      document.getElementById('statusIndicator').textContent = message;
+      const statusDiv = document.getElementById('statusIndicator');
+      statusDiv.textContent = message;
     }
 
-    function showLoading(text) {
+    // Show searching topic in loading overlay
+    function showSearchingTopic(topic) {
+      const inlineDiv = document.getElementById('searchingTopicInline');
+      const topicNameSpan = document.getElementById('searchingTopicNameInline');
+      topicNameSpan.textContent = topic;
+      inlineDiv.style.display = 'flex';
+    }
+
+    function hideSearchingTopic() {
+      const inlineDiv = document.getElementById('searchingTopicInline');
+      inlineDiv.style.display = 'none';
+    }
+
+    // Update showLoading function
+    function showLoading(text = 'Finding your perfect match...') {
       isLoading = true;
       const overlay = document.getElementById('loadingOverlay');
-      document.getElementById('loadingText').textContent = text;
+      const textEl = document.getElementById('loadingText');
+      textEl.textContent = text;
       overlay.classList.remove('hidden');
+
+      // Show searching topic if we have a selected topic
       if (selectedTopic) {
-        document.getElementById('searchingTopicNameInline').textContent = selectedTopic;
-        document.getElementById('searchingTopicInline').style.display = 'flex';
+        showSearchingTopic(selectedTopic);
       }
     }
 
+    // Update hideLoading function
     function hideLoading() {
       isLoading = false;
-      document.getElementById('loadingOverlay').classList.add('hidden');
-      document.getElementById('searchingTopicInline').style.display = 'none';
+      const overlay = document.getElementById('loadingOverlay');
+      overlay.classList.add('hidden');
+      hideSearchingTopic(); // Hide the inline searching text
     }
-
     function toggleAudio() {
       if (localStream) {
         const audioTrack = localStream.getAudioTracks()[0];
         if (audioTrack) {
           audioTrack.enabled = !audioTrack.enabled;
-          document.getElementById('muteBtn').textContent = audioTrack.enabled ? '🎤' : '🔇';
+          const btn = document.getElementById('muteBtn');
+          btn.textContent = audioTrack.enabled ? '🎤' : '🔇';
         }
       }
     }
@@ -840,24 +1007,6 @@
       }
     }
 
-    function cancelQueue() {
-      hideLoading();
-      if (socket && socket.connected) socket.emit("next");
-      window.location.href = './topics.html';
-    }
-
-    function resetToWaiting() {
-      if (socket && socket.connected) {
-        showLoading('Finding new partner...');
-        updateStatus('Searching...');
-        socket.emit("joinQueue", {
-          interests: [selectedTopic],
-          userId: localStorage.getItem('userId'),
-          isGuest: isGuest
-        });
-      }
-    }
-
     function cleanup() {
       if (peer) {
         peer.close();
@@ -871,17 +1020,27 @@
     // GUEST TIMER
     // ============================================
     function startGuestTimer() {
-      if (!isGuest) return;
+      if (!isGuest) {
+        console.log('Auth user - no timer needed');
+        return;
+      }
+
       console.log('Guest user - starting 5 min timer');
       let timeLeft = 300;
+
       guestTimerInterval = setInterval(() => {
         timeLeft--;
         const minutes = Math.floor(timeLeft / 60);
         const seconds = timeLeft % 60;
+
         const timerEl = document.getElementById('timer');
         timerEl.textContent = `⏱️ Guest: ${minutes}:${seconds.toString().padStart(2, '0')}`;
         timerEl.classList.remove('hidden');
-        if (timeLeft <= 60) timerEl.classList.add('warning');
+
+        if (timeLeft <= 60) {
+          timerEl.classList.add('warning');
+        }
+
         if (timeLeft <= 0) {
           clearInterval(guestTimerInterval);
           alert('Guest session expired. Please sign up to continue!');
