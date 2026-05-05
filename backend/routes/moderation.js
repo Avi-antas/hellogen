@@ -1,27 +1,28 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-const upload = multer({ storage: multer.memoryStorage() });
-const aiModeration = require('../services/aiModerationService');
+const topicModeration = require('../services/topicModeration');
 
-// Moderate audio endpoint (called from frontend)
-router.post('/audio', upload.single('audio'), async (req, res) => {
-  try {
-    const audioBuffer = req.file.buffer;
-    const result = await aiModeration.analyzeAudio(audioBuffer);
-    
-    res.json(result);
-  } catch (err) {
-    console.error('Moderation error:', err);
-    res.status(500).json({ error: 'Moderation failed' });
+// Check topic endpoint
+router.post('/check-topic', async (req, res) => {
+  const { topic } = req.body;
+  
+  if (!topic) {
+    return res.json({ 
+      isOffensive: false, 
+      reason: 'No topic provided' 
+    });
   }
-});
-
-// Moderate text endpoint
-router.post('/text', async (req, res) => {
-  const { text } = req.body;
-  const result = await aiModeration.detectToxicity(text);
-  res.json(result);
+  
+  try {
+    const result = await topicModeration.checkTopic(topic);
+    res.json(result);
+  } catch (error) {
+    console.error('Topic check error:', error);
+    res.status(500).json({ 
+      isOffensive: false, 
+      reason: 'Service unavailable'
+    });
+  }
 });
 
 module.exports = router;

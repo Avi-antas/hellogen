@@ -12,23 +12,25 @@ function handleSockets(io) {
     let currentUser = null;
     let isInQueue = false;
 
-     handleAudioModeration(io, socket);
+    // Initialize audio moderation
+    handleAudioModeration(io, socket);
+
     // 🎯 JOIN QUEUE with interest matching
     socket.on("joinQueue", async (user) => {
       console.log("📥 JOIN:", socket.id, user.interests);
-      
-      // Extract topic (first interest)
-      const topic = user.interests?.[0] || 'general';
-      currentTopic = topic;
-      currentUser = {
-        socketId: socket.id,
-        interests: user.interests || [],
-        userId: user.userId,
-        timestamp: Date.now()
-      };
-      
+
+      // Extract topic (first interest) - NO profanity filter
+ const topic = user.interests?.[0] || 'general';
+currentTopic = topic;
+currentUser = {
+  socketId: socket.id,
+  interests: user.interests || [],
+  userId: user.userId,
+  timestamp: Date.now()
+};
+
       isInQueue = true;
-      
+
       // Try Redis first if enabled
       if (process.env.USE_REDIS === 'true' && isRedisReady()) {
         await handleRedisMatching(socket, currentUser, io);
@@ -39,51 +41,52 @@ function handleSockets(io) {
     });
 
     // 🔁 NEXT BUTTON - User wants new partner but stays in call
-socket.on("next", async () => {
-  console.log(`User ${socket.id} requested next - finding new partner`);
-  
-  // Set flag for graceful disconnect
-  socket.gracefulNext = true;
-  
-  // Check if currently matched
-  const currentPartner = activePairs[socket.id];
-  
-  if (currentPartner) {
-    // Notify current partner they've been left (they stay in call)
-    io.to(currentPartner).emit("partner-left-waiting");
-    console.log(`Sent partner-left-waiting to ${currentPartner}`);
-    
-    // Remove from active pairs
-    delete activePairs[currentPartner];
-    delete activePairs[socket.id];
-    
-    // Partner automatically rejoins queue after delay
-    setTimeout(() => {
-      const partnerSocket = io.sockets.sockets.get(currentPartner);
-      if (partnerSocket && !activePairs[currentPartner]) {
-        console.log(`Partner ${currentPartner} automatically rejoining queue`);
-        io.to(currentPartner).emit("rejoin-queue");
+    socket.on("next", async () => {
+      console.log(`User ${socket.id} requested next - finding new partner`);
+
+      // Set flag for graceful disconnect
+      socket.gracefulNext = true;
+
+      // Check if currently matched
+      const currentPartner = activePairs[socket.id];
+
+      if (currentPartner) {
+        // Notify current partner they've been left (they stay in call)
+        io.to(currentPartner).emit("partner-left-waiting");
+        console.log(`Sent partner-left-waiting to ${currentPartner}`);
+
+        // Remove from active pairs
+        delete activePairs[currentPartner];
+        delete activePairs[socket.id];
+
+        // Partner automatically rejoins queue after delay
+        setTimeout(() => {
+          const partnerSocket = io.sockets.sockets.get(currentPartner);
+          if (partnerSocket && !activePairs[currentPartner]) {
+            console.log(`Partner ${currentPartner} automatically rejoining queue`);
+            io.to(currentPartner).emit("rejoin-queue");
+          }
+        }, 1000);
       }
-    }, 1000);
-  }
-  
-  // Current user rejoins queue to find new partner
-  if (currentTopic) {
-    setTimeout(() => {
-      if (socket.connected) {
-        socket.emit("joinQueue", { 
-          interests: [currentTopic],
-          userId: currentUser?.userId 
-        });
+
+      // Current user rejoins queue to find new partner
+      if (currentTopic) {
+        setTimeout(() => {
+          if (socket.connected) {
+            socket.emit("joinQueue", {
+              interests: [currentTopic],
+              userId: currentUser?.userId
+            });
+          }
+        }, 500);
       }
-    }, 500);
-  }
-  
-  // Reset flag after handling
-  setTimeout(() => {
-    socket.gracefulNext = false;
-  }, 100);
-});
+
+      // Reset flag after handling
+      setTimeout(() => {
+        socket.gracefulNext = false;
+      }, 100);
+    });
+
     // Rejoin queue handler
     socket.on("rejoin-queue", () => {
       console.log(`User ${socket.id} rejoining queue`);
@@ -109,31 +112,28 @@ socket.on("next", async () => {
 
     // DISCONNECT handler
     socket.on("disconnect", () => {
-  console.log("❌ Disconnected:", socket.id);
-  
-  // Remove from queue
-  removeFromQueue(socket.id);
-  isInQueue = false;
-  
-  // Notify partner if exists - Send DIFFERENT events based on situation
-  if (activePairs[socket.id]) {
-    const partner = activePairs[socket.id];
-    
-    // Check if this was a graceful "next" or an actual disconnect
-    // For graceful next, send "partner-left-waiting"
-    // For actual disconnect, send "partner-disconnected"
-    if (socket.gracefulNext) {
-      io.to(partner).emit("partner-left-waiting");
-      console.log(`Sent partner-left-waiting to ${partner}`);
-    } else {
-      io.to(partner).emit("partner-disconnected");
-      console.log(`Sent partner-disconnected to ${partner}`);
-    }
-    
-    delete activePairs[partner];
-    delete activePairs[socket.id];
-  }
-});
+      console.log("❌ Disconnected:", socket.id);
+
+      // Remove from queue
+      removeFromQueue(socket.id);
+      isInQueue = false;
+
+      // Notify partner if exists
+      if (activePairs[socket.id]) {
+        const partner = activePairs[socket.id];
+
+        if (socket.gracefulNext) {
+          io.to(partner).emit("partner-left-waiting");
+          console.log(`Sent partner-left-waiting to ${partner}`);
+        } else {
+          io.to(partner).emit("partner-disconnected");
+          console.log(`Sent partner-disconnected to ${partner}`);
+        }
+
+        delete activePairs[partner];
+        delete activePairs[socket.id];
+      }
+    });
   });
 }
 
@@ -144,17 +144,17 @@ async function handleRedisMatching(socket, user, io) {
   const redis = getRedis();
   const topic = user.interests[0] || 'general';
   const queueKey = `queue:${topic}`;
-  
+
   // Check if someone is waiting in this exact topic
   let partner = await redis.lPop(queueKey);
-  
+
   if (partner) {
     partner = JSON.parse(partner);
-    
+
     // Calculate interest match score
     const matchScore = calculateMatchScore(user.interests, partner.interests);
     console.log(`Match score for ${topic}: ${matchScore}%`);
-    
+
     if (matchScore >= 60) {
       // Good match! Connect them
       await connectUsers(io, socket.id, partner.socketId, topic, matchScore);
@@ -164,36 +164,35 @@ async function handleRedisMatching(socket, user, io) {
       await redis.rPush(queueKey, JSON.stringify(partner));
     }
   }
-  
+
   // Try fallback to cluster matching
   const clusterMatch = await findClusterMatch(redis, user, topic);
   if (clusterMatch) {
     await connectUsers(io, socket.id, clusterMatch, topic, 65);
     return;
   }
-  
+
   // No match found, add to queue
   await redis.rPush(queueKey, JSON.stringify({
     socketId: socket.id,
     interests: user.interests,
     timestamp: Date.now()
   }));
-  
+
   // Send waiting status
   socket.emit("waiting-status", { queueLength: await redis.lLen(queueKey) });
-  
+
   // Set timeout to prevent infinite waiting
   setTimeout(async () => {
     const queueLength = await redis.lLen(queueKey);
     if (queueLength > 1) {
-      // Try to match with anyone waiting
       const fallbackMatch = await findAnyMatch(redis, socket.id);
       if (fallbackMatch) {
         console.log(`Fallback match for ${socket.id}`);
         await connectUsers(io, socket.id, fallbackMatch, 'general', 50);
       }
     }
-  }, 15000); // 15 second timeout
+  }, 15000);
 }
 
 // ============================================
@@ -202,11 +201,11 @@ async function handleRedisMatching(socket, user, io) {
 async function handleInMemoryMatching(socket, user, io) {
   // Remove existing entry
   waitingUsers = waitingUsers.filter(u => u.socketId !== socket.id);
-  
+
   // Try to find a match with interest similarity
   let bestMatch = null;
   let bestScore = 0;
-  
+
   for (const waiting of waitingUsers) {
     const score = calculateMatchScore(user.interests, waiting.interests);
     if (score >= 60 && score > bestScore) {
@@ -214,7 +213,7 @@ async function handleInMemoryMatching(socket, user, io) {
       bestMatch = waiting;
     }
   }
-  
+
   if (bestMatch) {
     // Found good match
     waitingUsers = waitingUsers.filter(u => u.socketId !== bestMatch.socketId);
@@ -228,15 +227,14 @@ async function handleInMemoryMatching(socket, user, io) {
       timestamp: Date.now()
     });
     console.log(`Added to queue. Queue size: ${waitingUsers.length}`);
-    
+
     // Send waiting status
     socket.emit("waiting-status", { queueLength: waitingUsers.length });
-    
+
     // Timeout for fallback
     setTimeout(() => {
       const stillWaiting = waitingUsers.find(u => u.socketId === socket.id);
       if (stillWaiting && waitingUsers.length > 1) {
-        // Try random match as fallback
         const fallback = waitingUsers.find(u => u.socketId !== socket.id);
         if (fallback) {
           waitingUsers = waitingUsers.filter(u => u.socketId !== fallback.socketId && u.socketId !== socket.id);
@@ -253,10 +251,10 @@ async function handleInMemoryMatching(socket, user, io) {
 // ============================================
 function calculateMatchScore(interests1, interests2) {
   if (!interests1?.length || !interests2?.length) return 50;
-  
+
   let score = 0;
   let totalChecks = 0;
-  
+
   for (const interest1 of interests1) {
     for (const interest2 of interests2) {
       totalChecks++;
@@ -264,7 +262,7 @@ function calculateMatchScore(interests1, interests2) {
       score += similarity;
     }
   }
-  
+
   const averageScore = totalChecks > 0 ? score / totalChecks : 0;
   return Math.min(100, Math.max(0, Math.floor(averageScore)));
 }
@@ -272,9 +270,9 @@ function calculateMatchScore(interests1, interests2) {
 function calculateInterestSimilarity(interest1, interest2) {
   const i1 = interest1.toLowerCase().trim();
   const i2 = interest2.toLowerCase().trim();
-  
+
   if (i1 === i2) return 100;
-  
+
   const relatedTopics = {
     'cricket': ['sports', 'ipl', 'worldcup', 'football'],
     'football': ['sports', 'soccer', 'worldcup', 'cricket'],
@@ -284,17 +282,17 @@ function calculateInterestSimilarity(interest1, interest2) {
     'music': ['rap', 'hiphop', 'rock', 'jazz'],
     'gaming': ['games', 'valorant', 'pubg', 'fortnite']
   };
-  
+
   if (relatedTopics[i1]?.includes(i2) || relatedTopics[i2]?.includes(i1)) {
     return 70;
   }
-  
-  if (i1.includes(i2) || i2.includes(i1) || 
-      i1.split(' ').some(word => i2.includes(word)) ||
-      i2.split(' ').some(word => i1.includes(word))) {
+
+  if (i1.includes(i2) || i2.includes(i1) ||
+    i1.split(' ').some(word => i2.includes(word)) ||
+    i2.split(' ').some(word => i1.includes(word))) {
     return 60;
   }
-  
+
   return 0;
 }
 
@@ -309,9 +307,9 @@ async function findClusterMatch(redis, user, originalTopic) {
     'music': ['entertainment'],
     'gaming': ['tech']
   };
-  
+
   const related = relatedTopics[originalTopic] || [];
-  
+
   for (const topic of related) {
     const queueKey = `queue:${topic}`;
     const partner = await redis.lPop(queueKey);
@@ -319,7 +317,7 @@ async function findClusterMatch(redis, user, originalTopic) {
       return JSON.parse(partner).socketId;
     }
   }
-  
+
   return null;
 }
 
@@ -342,15 +340,15 @@ async function findAnyMatch(redis, excludeSocketId) {
 // ============================================
 async function connectUsers(io, socketId1, socketId2, topic, matchScore) {
   console.log(`✅ CONNECTING: ${socketId1} <-> ${socketId2} (Match: ${matchScore}%)`);
-  
+
   // Store active pairs
   activePairs[socketId1] = socketId2;
   activePairs[socketId2] = socketId1;
-  
-  // Notify both users with match score
-  io.to(socketId1).emit("matched", socketId2);
-  io.to(socketId2).emit("matched", socketId1);
-  
+
+  // Notify both users with match score and topic
+  io.to(socketId1).emit("matched", socketId2, topic);
+  io.to(socketId2).emit("matched", socketId1, topic);
+
   // Send match quality score
   io.to(socketId1).emit("match-quality", matchScore);
   io.to(socketId2).emit("match-quality", matchScore);

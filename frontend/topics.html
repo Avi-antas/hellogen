@@ -3,161 +3,283 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Choose Topic - Hellogen</title>
+  <title>Topics - hellogen</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 100vh;
       padding: 20px;
     }
-    
-    .topics-container {
-      max-width: 800px;
-      margin: 0 auto;
-    }
-    
-    h2 {
-      text-align: center;
-      color: white;
-      margin-bottom: 30px;
-    }
-    
+    .container { max-width: 800px; margin: 0 auto; }
+    h2 { text-align: center; color: white; margin-bottom: 10px; }
+    .subtitle { text-align: center; color: rgba(255,255,255,0.8); margin-bottom: 30px; }
     .topics-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 15px;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
     }
-    
     .topic-card {
       background: white;
       padding: 25px 15px;
       text-align: center;
-      border-radius: 15px;
+      border-radius: 20px;
       cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
-    
-    .topic-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    }
-    
+    .topic-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
     .topic-emoji { font-size: 40px; display: block; margin-bottom: 10px; }
-    .topic-name { font-size: 16px; font-weight: bold; margin-bottom: 5px; }
-    .topic-count { font-size: 12px; color: #999; }
-    
+    .topic-name { font-size: 16px; font-weight: bold; color: #333; }
     .custom-topic {
-      margin-top: 30px;
+      background: white;
+      border-radius: 20px;
+      padding: 25px;
+      margin-top: 20px;
+    }
+    .custom-topic h3 { margin-bottom: 15px; color: #333; }
+    .custom-input-group {
       display: flex;
       gap: 10px;
+      flex-wrap: wrap;
     }
-    
-    .custom-topic input {
+    .custom-input-group input {
       flex: 1;
       padding: 15px;
+      border: 2px solid #ddd;
+      border-radius: 15px;
+      font-size: 16px;
+      min-width: 200px;
+    }
+    .custom-input-group button {
+      padding: 15px 30px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
       border: none;
       border-radius: 15px;
       font-size: 16px;
-    }
-    
-    .custom-topic button {
-      padding: 15px 30px;
-      background: white;
-      border: none;
-      border-radius: 15px;
       cursor: pointer;
-      font-weight: bold;
+      transition: transform 0.2s;
     }
-    
-    .info {
-      text-align: center;
-      color: white;
-      margin-top: 30px;
-      font-size: 14px;
+    .custom-input-group button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .warning { color: #ff4757; font-size: 13px; margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 10px; display: none; }
+    .loading-topic { display: none; text-align: center; margin-top: 10px; color: #667eea; }
+    .spinner-small {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 768px) {
+      .topics-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px; }
+      .topic-card { padding: 15px 10px; }
+      .topic-emoji { font-size: 30px; }
     }
   </style>
 </head>
 <body>
-  <div class="topics-container">
+  <div class="container">
     <h2>🎯 Select Your Interest</h2>
-    
-    <div class="topics-grid" id="topicsGrid">
-      <!-- Topics loaded dynamically -->
-    </div>
-    
+    <p class="subtitle">Choose a topic or create your own</p>
+
+    <div class="topics-grid" id="topicsGrid"></div>
+
     <div class="custom-topic">
-      <input type="text" id="customTopic" placeholder="Or enter custom topic...">
-      <button onclick="startWithCustomTopic()">Start</button>
+      <h3>✏️ Or create your own</h3>
+      <div class="custom-input-group">
+        <input type="text" id="customTopic" placeholder="Enter any topic (max 30 chars)" maxlength="30" autocomplete="off">
+        <button id="startCustomBtn">Start Chat</button>
+      </div>
+      <div id="topicWarning" class="warning"></div>
+      <div id="topicLoading" class="loading-topic">
+        <div class="spinner-small"></div>
+        <span>Checking topic...</span>
+      </div>
     </div>
-    
-    <div class="info" id="userInfo"></div>
   </div>
-  
+
   <script>
-    const topics = [
-      { emoji: "🎮", name: "Gaming", count: 234 },
-      { emoji: "💻", name: "Coding", count: 156 },
-      { emoji: "🎵", name: "Music", count: 189 },
-      { emoji: "⚽", name: "Sports", count: 143 },
-      { emoji: "🎬", name: "Movies", count: 98 },
-      { emoji: "🏏", name: "Cricket", count: 267 },
-      { emoji: "🗣️", name: "Debate", count: 76 },
-      { emoji: "🎤", name: "Open Mic", count: 54 },
-      { emoji: "🤝", name: "Friendly Chat", count: 312 },
-      { emoji: "💡", name: "Startups", count: 89 }
-    ];
-    
-    // Load user info
-    const isGuest = localStorage.getItem('isGuest') === 'true';
+    const BACKEND_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? 'http://localhost:5000'
+      : 'https://hellogen.onrender.com';
+
     const token = localStorage.getItem('token');
-    
-    if (isGuest) {
-      document.getElementById('userInfo').innerHTML = '⚠️ Guest mode: 10 minutes total chat time';
-      checkGuestTime();
-    } else {
-      document.getElementById('userInfo').innerHTML = '✅ Authenticated user | 80% matching priority';
-    }
-    
+    if (!token) window.location.href = 'index.html';
+
+    // ============================================
+    // COMPREHENSIVE PROFANITY LIST (Same as backend)
+    // ============================================
+    const offensiveWords = [
+      // ENGLISH
+      'fuck', 'shit', 'asshole', 'bitch', 'cunt', 'dick', 'pussy', 'cock', 
+      'whore', 'slut', 'bastard', 'motherfucker', 'faggot', 'nigger', 
+      'nigga', 'retard', 'moron', 'idiot', 'dumb', 'stupid', 'ass', 'damn',
+      'fuk', 'fcuk', 'fcker', 'bsdk', 'fck', 'fuker',
+      
+      // HINDI / URDU
+      'gand', 'gandu', 'chutiya', 'bhenchod', 'madarchod', 'bhosdike', 
+      'lodu', 'randi', 'harami', 'kamine', 'saala', 'hijra', 'chakka',
+      'bevakoof', 'nalayak', 'bhadva', 'chodu', 'lavde', 'bhencho',
+      'bhosdi', 'maderchod', 'bsdk', 'mc', 'bc', 'teri maa', 'maa ki',
+      'bahanchod', 'bahan ke', 'chut', 'chut marunga', 'bhosri', 'chutad',
+      'lauda', 'lund', 'pundai', 'thevdiya', 'ghatiya', 'ullu ka patha', 'hijda',
+      
+      // BENGALI / BANGLA
+      'khanki', 'bokachoda', 'chodna', 'magi', 'magir pola', 'kuttar bachcha',
+      'kutta', 'kukur', 'shaal', 'gud', 'putki', 'boka', 'chele', 'paka',
+      'nati', 'kharap', 'baje', 'mosla', 'gaye', 'garda', 'khepa',
+      'gandu', 'choda', 'mutha', 'hijra', 'haraam', 'bhai er maa',
+      'tor maa', 'tor baper', 'kuttar baccha', 'magir pola',
+      
+      // THREATENING
+      'kill', 'murder', 'death', 'suicide', 'hang', 'shoot', 'bomb',
+      'attack', 'violence', 'blood', 'rape', 'abuse', 'hitler', 'nazi',
+      'terrorist', 'beheading', 'slaughter', 'torture',
+      
+      // SEXUAL
+      'sex', 'porn', 'xxx', 'nude', 'naked', 'erotic', 'fucking',
+      'blowjob', 'handjob', 'orgasm', 'penis', 'vagina', 'boobs', 'tits',
+      'breasts', 'nipple', 'anal', 'oral', 'cum', 'semen', 'masturbate'
+    ];
+
+    // Popular topics
+    const topics = [
+      { emoji: "💻", name: "Coding", value: "coding" },
+      { emoji: "🏏", name: "Cricket", value: "cricket" },
+      { emoji: "🎮", name: "Gaming", value: "gaming" },
+      { emoji: "🎵", name: "Music", value: "music" },
+      { emoji: "⚽", name: "Football", value: "football" },
+      { emoji: "🎬", name: "Movies", value: "movies" },
+      { emoji: "🤖", name: "AI/ML", value: "artificial intelligence" },
+      { emoji: "📚", name: "Study", value: "study" },
+      { emoji: "💼", name: "Startups", value: "startups" },
+      { emoji: "🎭", name: "Open Mic", value: "open mic" },
+      { emoji: "🎨", name: "Art", value: "art" },
+      { emoji: "✈️", name: "Travel", value: "travel" }
+    ];
+
     // Render topics
     const grid = document.getElementById('topicsGrid');
     topics.forEach(topic => {
       const card = document.createElement('div');
       card.className = 'topic-card';
-      card.onclick = () => startWithTopic(topic.name);
+      card.onclick = () => selectTopic(topic.value);
       card.innerHTML = `
         <span class="topic-emoji">${topic.emoji}</span>
         <div class="topic-name">${topic.name}</div>
-        <div class="topic-count">${topic.count} online</div>
       `;
       grid.appendChild(card);
     });
-    
-    async function startWithTopic(topic) {
+
+    // ============================================
+    // PROFANITY CHECK FUNCTION
+    // ============================================
+    function containsProfanity(text) {
+      const lowerText = text.toLowerCase();
+      for (const word of offensiveWords) {
+        if (lowerText.includes(word)) {
+          console.log(`🚫 Blocked word found: "${word}" in "${text}"`);
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function getOffensiveWord(text) {
+      const lowerText = text.toLowerCase();
+      for (const word of offensiveWords) {
+        if (lowerText.includes(word)) {
+          return word;
+        }
+      }
+      return null;
+    }
+
+    // ============================================
+    // SELECT TOPIC FUNCTION
+    // ============================================
+    async function selectTopic(topic) {
+      const warningDiv = document.getElementById('topicWarning');
+      warningDiv.style.display = 'none';
+      
+      // Check profanity
+      if (containsProfanity(topic)) {
+        const badWord = getOffensiveWord(topic);
+        warningDiv.innerHTML = `❌ Topic contains offensive word: "${badWord}". Please choose a different topic.`;
+        warningDiv.style.display = 'block';
+        return;
+      }
+      
       localStorage.setItem('selectedTopic', topic);
-      window.location.href = './chat.html';
+      window.location.href = 'chat.html';
     }
-    
-    function startWithCustomTopic() {
-      const custom = document.getElementById('customTopic').value.trim();
-      if (custom) {
-        localStorage.setItem('selectedTopic', custom);
-        window.location.href = './chat.html';
+
+    // ============================================
+    // CUSTOM TOPIC FUNCTION
+    // ============================================
+    const customInput = document.getElementById('customTopic');
+    const startBtn = document.getElementById('startCustomBtn');
+    const warningDiv = document.getElementById('topicWarning');
+    const loadingDiv = document.getElementById('topicLoading');
+
+    async function startWithCustomTopic() {
+      const custom = customInput.value.trim().toLowerCase();
+      
+      warningDiv.style.display = 'none';
+      
+      if (!custom) {
+        warningDiv.innerHTML = 'Please enter a topic';
+        warningDiv.style.display = 'block';
+        return;
       }
-    }
-    
-    async function checkGuestTime() {
-      const response = await fetch('/api/auth/guest-time', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-      if (data.expired) {
-        alert('Guest time expired. Please login to continue.');
-        window.location.href = '/';
+      
+      if (custom.length > 30) {
+        warningDiv.innerHTML = 'Topic too long (max 30 characters)';
+        warningDiv.style.display = 'block';
+        return;
       }
+      
+      // Check allowed characters
+      const allowedRegex = /^[a-zA-Z0-9\s\-_]+$/;
+      if (!allowedRegex.test(custom)) {
+        warningDiv.innerHTML = 'Topic can only contain letters, numbers, spaces, hyphens, and underscores';
+        warningDiv.style.display = 'block';
+        return;
+      }
+      
+      // ✅ PROFANITY CHECK - Comprehensive
+      if (containsProfanity(custom)) {
+        const badWord = getOffensiveWord(custom);
+        warningDiv.innerHTML = `❌ Topic contains offensive word: "${badWord}". Please enter a different topic.`;
+        warningDiv.style.display = 'block';
+        customInput.value = '';
+        return;
+      }
+      
+      // Also check if the word itself is offensive
+      if (offensiveWords.includes(custom)) {
+        warningDiv.innerHTML = `❌ Offensive word "${custom}" is not allowed as a topic.`;
+        warningDiv.style.display = 'block';
+        customInput.value = '';
+        return;
+      }
+      
+      localStorage.setItem('selectedTopic', custom);
+      window.location.href = 'chat.html';
     }
+
+    startBtn.addEventListener('click', startWithCustomTopic);
+    customInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') startWithCustomTopic();
+    });
   </script>
 </body>
 </html>

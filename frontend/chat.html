@@ -71,6 +71,24 @@
       transform: rotateY(180deg);
     }
 
+    .topic-badge {
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 8px 20px;
+      border-radius: 30px;
+      font-size: 14px;
+      font-weight: bold;
+      z-index: 15;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+
     .controls {
       position: fixed;
       bottom: 30px;
@@ -112,11 +130,6 @@
       color: white;
     }
 
-    .control-btn.cancel {
-      background: #ffa502;
-      color: white;
-    }
-
     .status-indicator {
       position: fixed;
       top: 20px;
@@ -130,6 +143,27 @@
       font-size: 14px;
       z-index: 15;
       white-space: nowrap;
+    }
+
+    .searching-topic-inline {
+      margin: 15px 0 10px 0;
+      padding: 10px 15px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 25px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .searching-topic-inline strong {
+      color: #667eea;
+      font-size: 16px;
+      background: rgba(102, 126, 234, 0.2);
+      padding: 2px 8px;
+      border-radius: 20px;
     }
 
     .timer {
@@ -190,13 +224,26 @@
     }
 
     @keyframes blink {
-      50% { opacity: 0.5; }
+      50% {
+        opacity: 0.5;
+      }
     }
 
     @keyframes pulse {
-      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
-      70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); }
-      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+      0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
+      }
+
+      70% {
+        transform: scale(1.1);
+        box-shadow: 0 0 0 10px rgba(255, 0, 0, 0);
+      }
+
+      100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
+      }
     }
 
     @keyframes slideUp {
@@ -204,6 +251,7 @@
         opacity: 0;
         transform: translate(-50%, 20px);
       }
+
       to {
         opacity: 1;
         transform: translate(-50%, 0);
@@ -211,7 +259,9 @@
     }
 
     @keyframes spin {
-      to { transform: rotate(360deg); }
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     .loading-overlay {
@@ -264,10 +314,12 @@
         height: 50px;
         font-size: 20px;
       }
+
       .local-video {
         width: 100px;
         height: 133px;
       }
+
       .moderation-warning {
         font-size: 11px;
         white-space: normal;
@@ -288,13 +340,18 @@
     </div>
   </div>
 
+  <div class="topic-badge" id="topicBadge">
+    <span class="topic-icon">🎯</span>
+    <span id="matchedTopic">Coding</span>
+  </div>
+
   <div class="controls" id="controls">
     <button class="control-btn mute" id="muteBtn" onclick="toggleAudio()">🎤</button>
     <button class="control-btn next" onclick="nextUser()">⏭️</button>
     <button class="control-btn end" onclick="endCall()">📞</button>
   </div>
 
-  <button class="red-flag-btn" id="redFlagBtn" onclick="reportViolation()">🚩</button>
+  <button class="red-flag-btn" id="redFlagBtn">🚩</button>
 
   <div class="status-indicator" id="statusIndicator">Connecting...</div>
   <div class="timer hidden" id="timer"></div>
@@ -303,6 +360,11 @@
     <div class="loading-content">
       <div class="spinner"></div>
       <p id="loadingText">Finding your match...</p>
+      <div class="searching-topic-inline" id="searchingTopicInline" style="display: none;">
+        <span>Searching for</span>
+        <strong id="searchingTopicNameInline">Coding</strong>
+        <span>partners...</span>
+      </div>
       <button class="cancel-queue" onclick="cancelQueue()">Cancel & Go Back</button>
     </div>
   </div>
@@ -337,6 +399,8 @@
     let mediaRecorder = null;
     let audioChunks = [];
     let handsDetector = null;
+    let partnerStartTime = null;
+    let isLoading = false;
 
     // ============================================
     // CHECK AUTHENTICATION
@@ -370,12 +434,21 @@
         hideLoading();
       });
 
-      socket.on('matched', async (id) => {
+      socket.on('matched', (id, topic) => {
         partnerId = id;
         isMatched = true;
-        console.log('🎯 Matched with', id);
-        updateStatus('🎉 Connected! Video call active');
+        partnerStartTime = Date.now();
+        console.log('🎯 Matched with', id, 'Topic:', topic);
+
         hideLoading();
+        
+        // Show matched topic badge
+        const topicBadge = document.getElementById('topicBadge');
+        const matchedTopicSpan = document.getElementById('matchedTopic');
+        matchedTopicSpan.textContent = topic || selectedTopic;
+        topicBadge.style.display = 'flex';
+        
+        updateStatus('🎉 Connected! Video call active');
 
         document.getElementById('localVideoWrapper').classList.remove('local-fullscreen');
         document.getElementById('localVideoWrapper').classList.add('local-video');
@@ -391,6 +464,7 @@
       socket.on('offer', async (data) => {
         partnerId = data.from;
         isMatched = true;
+        partnerStartTime = Date.now();
         console.log('📥 Received offer');
         updateStatus('📞 Connecting...');
         hideLoading();
@@ -441,9 +515,17 @@
         resetToWaiting();
       });
 
-      socket.on('show-red-flag', (data) => {
-        console.log('🚩 Red flag received:', data);
-        showRedFlag(data.reason || 'Policy violation detected', data.severity || 3);
+      socket.on('partner-violation-detected', (data) => {
+        console.log('🚩 Partner violated rules:', data);
+        
+        let reason = '';
+        if (data.type === 'offensive_gesture') {
+          reason = `Offensive gesture detected: ${data.details.gesture}`;
+        } else if (data.type === 'audio_slang') {
+          reason = `Inappropriate language detected`;
+        }
+        
+        showRedFlagWithOptions(reason, data.severity, data.details);
       });
 
       socket.on('call-ended-violation', (data) => {
@@ -458,28 +540,27 @@
     // ============================================
     // AI MODERATION SYSTEM
     // ============================================
-    
-    // Audio Moderation (Whisper + ToxicBERT)
+
     async function startAudioMonitoring() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        
+
         mediaRecorder = new MediaRecorder(stream);
         mediaRecorder.ondataavailable = (event) => {
           if (event.data.size > 0) {
             audioChunks.push(event.data);
           }
         };
-        
+
         mediaRecorder.onstop = async () => {
           const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
           audioChunks = [];
           await analyzeAudioChunk(audioBlob);
         };
-        
+
         mediaRecorder.start(4000);
         console.log('✅ Audio monitoring active');
-        
+
       } catch (err) {
         console.error('Audio monitoring failed:', err);
       }
@@ -488,15 +569,15 @@
     async function analyzeAudioChunk(audioBlob) {
       const formData = new FormData();
       formData.append('audio', audioBlob);
-      
+
       try {
         const response = await fetch(`${BACKEND_URL}/moderation/audio`, {
           method: 'POST',
           body: formData
         });
-        
+
         const result = await response.json();
-        
+
         if (result.isInappropriate && result.confidence > 0.6) {
           handleViolation({
             type: 'audio_slang',
@@ -511,22 +592,21 @@
       }
     }
 
-    // Gesture Moderation (MediaPipe Hands)
     async function startGestureMonitoring() {
       const videoElement = document.getElementById('remoteVideo');
       if (!videoElement) return;
-      
+
       handsDetector = new Hands({
         locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
       });
-      
+
       handsDetector.setOptions({
         maxNumHands: 2,
         modelComplexity: 1,
         minDetectionConfidence: 0.5,
         minTrackingConfidence: 0.5
       });
-      
+
       handsDetector.onResults((results) => {
         if (results.multiHandLandmarks) {
           for (const landmarks of results.multiHandLandmarks) {
@@ -542,15 +622,14 @@
           }
         }
       });
-      
-      // Process video frames
+
       const processVideo = async () => {
         if (videoElement && videoElement.readyState >= 2 && handsDetector) {
           await handsDetector.send({ image: videoElement });
         }
         requestAnimationFrame(processVideo);
       };
-      
+
       processVideo();
       console.log('✅ Gesture monitoring active');
     }
@@ -560,83 +639,90 @@
       const middleTip = landmarks[12];
       const ringTip = landmarks[16];
       const pinkyTip = landmarks[20];
-      
-      const indexIP = landmarks[6];
-      const middleIP = landmarks[10];
-      const ringIP = landmarks[14];
-      const pinkyIP = landmarks[18];
-      
-      // Middle finger detection
-      const isMiddleUp = middleTip.y < middleIP.y;
-      const isIndexDown = indexTip.y > indexIP.y;
-      const isRingDown = ringTip.y > ringIP.y;
-      const isPinkyDown = pinkyTip.y > pinkyIP.y;
-      
-      if (isMiddleUp && isIndexDown && isRingDown && isPinkyDown) {
+      const indexDip = landmarks[6];
+      const middleDip = landmarks[10];
+      const ringDip = landmarks[14];
+      const pinkyDip = landmarks[18];
+      const indexMcp = landmarks[5];
+      const middleMcp = landmarks[9];
+      const ringMcp = landmarks[13];
+      const pinkyMcp = landmarks[17];
+
+      const indexExtension = indexTip.y < indexDip.y;
+      const middleExtension = middleTip.y < middleDip.y;
+      const ringExtension = ringTip.y < ringDip.y;
+      const pinkyExtension = pinkyTip.y < pinkyDip.y;
+
+      const isMiddleOnlyUp = middleExtension && !indexExtension && !ringExtension && !pinkyExtension;
+      const middleVsIndex = (middleDip.y - indexDip.y) > 0.05;
+      const middleVsRing = (middleDip.y - ringDip.y) > 0.05;
+      const isMiddleFinger = isMiddleOnlyUp && (middleVsIndex || middleVsRing);
+
+      if (isMiddleFinger) {
         return { isOffensive: true, name: 'middle_finger', confidence: 0.95 };
       }
-      
-      // Fist detection
-      const allFingersDown = indexTip.y > indexIP.y &&
-                            middleTip.y > middleIP.y &&
-                            ringTip.y > ringIP.y &&
-                            pinkyTip.y > pinkyIP.y;
-      
-      if (allFingersDown) {
-        return { isOffensive: true, name: 'fist', confidence: 0.8 };
+
+      const allFingersCurled = !indexExtension && !middleExtension && !ringExtension && !pinkyExtension;
+      const fingersBelowBase = indexTip.y > indexMcp.y && middleTip.y > middleMcp.y && ringTip.y > ringMcp.y && pinkyTip.y > pinkyMcp.y;
+      const isFist = allFingersCurled && fingersBelowBase;
+
+      if (isFist) {
+        return { isOffensive: true, name: 'fist', confidence: 0.7 };
       }
-      
+
+      const isPointing = indexExtension && !middleExtension && !ringExtension && !pinkyExtension;
+      const handPosition = landmarks[0];
+      const isPointingAtCamera = isPointing && (indexTip.z - handPosition.z) > 0.02;
+
+      if (isPointingAtCamera) {
+        return { isOffensive: true, name: 'pointing', confidence: 0.7 };
+      }
+
       return { isOffensive: false, name: 'normal', confidence: 0 };
     }
 
+    let lastViolationTime = 0;
+    const VIOLATION_COOLDOWN = 2000;
+
     function handleViolation(violation) {
-      console.log('🚨 VIOLATION DETECTED:', violation);
-      
-      violationCount++;
-      
-      let action = 'warn';
-      let severity = violation.severity || 3;
-      
-      if (severity >= 4 || violationCount >= 3) {
-        action = 'end_call';
-      } else if (severity >= 3 || violationCount >= 2) {
-        action = 'red_flag';
+      const now = Date.now();
+
+      if (now - lastViolationTime < VIOLATION_COOLDOWN) {
+        console.log('Violation cooldown, ignoring...');
+        return;
       }
-      
-      // Send to backend
+      lastViolationTime = now;
+
+      console.log('🚨 VIOLATION DETECTED:', violation);
+      violationCount++;
+
+      let message = '';
+      let color = '#ffa502';
+
+      if (violation.type === 'audio_slang') {
+        message = `⚠️ Please avoid inappropriate language`;
+        color = '#ffa502';
+      } else if (violation.type === 'offensive_gesture') {
+        message = `🚫 Please avoid offensive gestures`;
+        color = '#ff4757';
+      }
+
+      showModerationWarning(message, color);
+
+      socket.emit('partner-violation-detected', {
+        to: partnerId,
+        type: violation.type,
+        details: violation,
+        severity: violation.severity || 3
+      });
+
       socket.emit('moderation-violation', {
         to: partnerId,
         type: violation.type,
         details: violation,
-        action: action,
+        action: 'red_flag_only',
         violationCount: violationCount
       });
-      
-      // Show warning
-      let message = '';
-      let color = '#ffa502';
-      
-      if (violation.type === 'audio_slang') {
-        message = `⚠️ Inappropriate language detected: ${violation.detected[0]?.word || 'abusive words'}`;
-        color = '#ffa502';
-      } else if (violation.type === 'offensive_gesture') {
-        message = `🚫 Offensive gesture detected: ${violation.gesture}`;
-        color = '#ff4757';
-      }
-      
-      if (action === 'end_call') {
-        message = `❗ SEVERE: ${message} Call will end`;
-        color = '#ff0000';
-      }
-      
-      showModerationWarning(message, color);
-      
-      if (action === 'end_call') {
-        setTimeout(() => {
-          socket.emit("next");
-          window.location.href = './topics.html';
-        }, 3000);
-      }
     }
 
     function showModerationWarning(message, color) {
@@ -649,33 +735,84 @@
       setTimeout(() => warningDiv.remove(), 4000);
     }
 
-    function showRedFlag(reason, severity) {
+    function showRedFlagWithOptions(reason, severity, violationData) {
       const redFlagBtn = document.getElementById('redFlagBtn');
       redFlagBtn.classList.add('visible');
       redFlagBtn.title = reason;
+      redFlagBtn.dataset.violationType = violationData?.type || 'unknown';
+      redFlagBtn.dataset.violationDetails = JSON.stringify(violationData || {});
       
       if (severity >= 4) {
         redFlagBtn.style.animation = 'pulse 0.5s infinite';
       }
       
-      // Auto-hide after 10 seconds
+      redFlagBtn.onclick = () => showReportOptionsWithNext(violationData);
+      
       setTimeout(() => {
         redFlagBtn.classList.remove('visible');
-      }, 10000);
+      }, 15000);
     }
 
-    function reportViolation() {
+    function showReportOptionsWithNext(violationData) {
+      const userChoice = confirm(
+        `⚠️ Inappropriate behavior detected!\n\n` +
+        `Choose:\n` +
+        `• OK - Report user\n` +
+        `• Cancel - Report & find new partner`
+      );
+      
+      if (userChoice === true) {
+        submitReportWithChoice(violationData, false);
+      } else {
+        submitReportWithChoice(violationData, true);
+      }
+    }
+
+    function submitReportWithChoice(violationData, findNewPartner) {
       if (!partnerId) return;
       
-      if (confirm('Report this user for policy violation?')) {
-        socket.emit('report-violation', {
-          reportedUserId: partnerId,
-          reason: 'ai_detected_violation',
-          severity: 'high'
-        });
-        showModerationWarning('✅ Report submitted. Thank you for keeping our community safe.', '#2ed573');
-        document.getElementById('redFlagBtn').classList.remove('visible');
+      let reason = 'ai_detected_violation';
+      if (violationData?.type === 'offensive_gesture') {
+        reason = `offensive_gesture_${violationData.gesture}`;
+      } else if (violationData?.type === 'audio_slang') {
+        reason = 'abusive_language';
       }
+      
+      fetch(`${BACKEND_URL}/api/report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          reportedUserId: partnerId,
+          reason: reason,
+          chatSessionId: socket.id,
+          violationDetails: violationData
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          showModerationWarning('✅ Report submitted. Thank you!', '#2ed573');
+          
+          if (findNewPartner) {
+            setTimeout(() => {
+              socket.emit("next");
+              cleanup();
+              resetToWaiting();
+            }, 1500);
+          } else {
+            document.getElementById('redFlagBtn').classList.remove('visible');
+          }
+        } else {
+          showModerationWarning('❌ Report failed', '#ff4757');
+        }
+      })
+      .catch(err => {
+        console.error('Report error:', err);
+        showModerationWarning('❌ Failed to submit report', '#ff4757');
+      });
     }
 
     function startAIModeration() {
@@ -718,10 +855,7 @@
         if (isGuest === true) {
           startGuestTimer();
           document.getElementById('timer').classList.remove('hidden');
-        } else {
-          document.getElementById('timer').classList.add('hidden');
         }
-
       } catch (err) {
         console.error('Camera error:', err);
         alert('Camera/Microphone access required');
@@ -783,6 +917,7 @@
     // ============================================
     function cancelQueue() {
       console.log('Cancelling queue...');
+      hideLoading();
       if (socket && socket.connected) {
         socket.emit("next");
       }
@@ -809,16 +944,35 @@
       statusDiv.textContent = message;
     }
 
-    function showLoading(text) {
+    function showSearchingTopic(topic) {
+      const inlineDiv = document.getElementById('searchingTopicInline');
+      const topicNameSpan = document.getElementById('searchingTopicNameInline');
+      topicNameSpan.textContent = topic;
+      inlineDiv.style.display = 'flex';
+    }
+
+    function hideSearchingTopic() {
+      const inlineDiv = document.getElementById('searchingTopicInline');
+      inlineDiv.style.display = 'none';
+    }
+
+    function showLoading(text = 'Finding your perfect match...') {
+      isLoading = true;
       const overlay = document.getElementById('loadingOverlay');
       const textEl = document.getElementById('loadingText');
       textEl.textContent = text;
       overlay.classList.remove('hidden');
+
+      if (selectedTopic) {
+        showSearchingTopic(selectedTopic);
+      }
     }
 
     function hideLoading() {
+      isLoading = false;
       const overlay = document.getElementById('loadingOverlay');
       overlay.classList.add('hidden');
+      hideSearchingTopic();
     }
 
     function toggleAudio() {

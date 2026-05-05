@@ -437,55 +437,191 @@ function resetCall() {
 // VIDEO CHAT FUNCTIONS
 // ============================================
 async function startWithInterest() {
-  const interest = document.getElementById('interestInput').value.trim().toLowerCase();
+  const interestInput = document.getElementById('interestInput');
+  const interest = interestInput?.value.trim().toLowerCase() || '';
+  const errorDiv = document.getElementById('profileError') || document.getElementById('emailError');
+  
+  // ============================================
+  // 1. BASIC VALIDATION (Fast, no API call)
+  // ============================================
+  
+  // Check if interest is empty
   if (!interest) {
+    if (errorDiv) errorDiv.innerText = 'Please select or enter an interest';
     alert('Please select or enter an interest');
     return;
   }
   
+  // Check length (max 30 characters)
+  if (interest.length > 30) {
+    const msg = 'Topic is too long (maximum 30 characters)';
+    if (errorDiv) errorDiv.innerText = msg;
+    alert(msg);
+    return;
+  }
+  
+  // Check for allowed characters (only letters, numbers, spaces, hyphens, underscores)
+  const allowedRegex = /^[a-zA-Z0-9\s\-_]+$/;
+  if (!allowedRegex.test(interest)) {
+    const msg = 'Topic can only contain letters, numbers, spaces, hyphens, and underscores';
+    if (errorDiv) errorDiv.innerText = msg;
+    alert(msg);
+    return;
+  }
+  
+  // Basic keyword blacklist (instant block, no API call needed)
+  const basicBlacklist = [
+    'fuck', 'shit', 'asshole', 'bitch', 'cunt', 'dick', 'pussy', 'cock', 'whore', 'slut',
+    'sex', 'porn', 'xxx', 'nude', 'naked', 'kill', 'murder', 'death', 'suicide', 'rape',
+    'chutiya', 'bhenchod', 'madarchod', 'gandu', 'bhosdike', 'lodu', 'randi'
+  ];
+  
+  if (basicBlacklist.some(word => interest.includes(word))) {
+    const msg = '❌ Offensive words are not allowed. Please enter a different topic.';
+    if (errorDiv) errorDiv.innerText = msg;
+    alert(msg);
+    if (interestInput) interestInput.value = '';
+    return;
+  }
+  
+  // ============================================
+  // 2. AI ITY CHECK (ToxicBERT via backend)
+  // ============================================
+  
+  // Show loading while AI checks
+  showLoading('Checking topic...');
+  
+  try {
+    const aiResponse = await fetch(`${BACKEND_URL}/moderation/check-topic`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+      },
+      body: JSON.stringify({ topic: interest })
+    });
+    
+    const aiResult = await aiResponse.json();
+    console.log('AI Topic Check Result:', aiResult);
+    
+    // If AI detects offensive content with high confidence
+    if (aiResult.isOffensive && aiResult.confidence > 0.6) {
+      const reason = aiResult.reason || 'Inappropriate content detected';
+      const msg = `❌ Topic not allowed: ${reason}`;
+      if (errorDiv) errorDiv.innerText = msg;
+      alert(msg);
+      if (interestInput) interestInput.value = '';
+      hideLoading();
+      return;
+    }
+    
+    // For medium confidence, show warning but allow (optional)
+    if (aiResult.isOffensive && aiResult.confidence > 0.4) {
+      const confirmMsg = `This topic may be inappropriate (${Math.round(aiResult.confidence * 100)}% confidence). Continue anyway?`;
+      if (!confirm(confirmMsg)) {
+        if (interestInput) interestInput.value = '';
+        hideLoading();
+        return;
+      }
+    }
+    
+    // Hide loading after AI check passes
+    hideLoading();
+    
+  } catch (err) {
+    console.error('AI topic check failed:', err);
+    // Continue with basic validation only if AI fails
+    hideLoading();
+    console.log('AI check failed, continuing with basic validation only');
+  }
+  
+  // ============================================
+  // 3. STORE SELECTED TOPIC
+  // ============================================
   currentInterest = interest;
+  localStorage.setItem('selectedTopic', interest);
   
-  // Close modal
-  document.getElementById('interestModal').classList.add('hidden');
+  // ============================================
+  // 4. CLOSE MODAL & SHOW LOADING
+  // ============================================
+  const modal = document.getElementById('interestModal');
+  if (modal) modal.classList.add('hidden');
   
-  // Show loading
   showLoading('Starting camera...');
   
+  // ============================================
+  // 5. START CAMERA
+  // ============================================
   try {
     localStream = await navigator.mediaDevices.getUserMedia({
       video: true,
       audio: true
     });
     
-    document.getElementById('localVideo').srcObject = localStream;
+    const localVideo = document.getElementById('localVideo');
+    if (localVideo) localVideo.srcObject = localStream;
     
     // Show local video fullscreen while waiting
-    document.getElementById('localVideoWrapper').classList.remove('hidden');
-    document.getElementById('localVideoWrapper').classList.add('local-fullscreen');
-    document.getElementById('localVideoWrapper').classList.remove('local-video');
+    const localWrapper = document.getElementById('localVideoWrapper');
+    if (localWrapper) {
+      localWrapper.classList.remove('hidden');
+      localWrapper.classList.add('local-fullscreen');
+      localWrapper.classList.remove('local-video');
+    }
     
-    updateStatus('Finding matches with similar interests...');
-    showLoading('Finding your perfect match...');
+    updateStatus(`🔍 Searching for "${interest}" partners...`);
+    showLoading(`Finding ${interest} partners...`);
     
-    // Join queue with interest
-    socket.emit("joinQueue", { 
+    // Show searching topic in loading overlay if function exists
+    if (typeof showSearchingTopic === 'function') {
+      showSearchingTopic(interest);
+    }
+    
+    // ============================================
+    // 6. JOIN QUEUE
+    // ============================================
+    socket.emit("joinQueue", {
       interests: [interest],
-      userId: localStorage.getItem('userId') || null
+      userId: localStorage.getItem('userId') || null,
+      isGuest: isGuest || false
     });
     
     sessionStartTime = Date.now();
     
     // Start analytics updates
-    startAnalyticsUpdates();
+    if (typeof startAnalyticsUpdates === 'function') {
+      startAnalyticsUpdates();
+    }
+    
+    // Start guest timer if needed
+    if (isGuest === true && typeof startGuestTimer === 'function') {
+      startGuestTimer();
+      const timerEl = document.getElementById('timer');
+      if (timerEl) timerEl.classList.remove('hidden');
+    }
     
   } catch (err) {
     console.error('Camera error:', err);
-    alert('Camera/Mic access required');
-    document.getElementById('interestModal').classList.remove('hidden');
+    
+    let errorMessage = 'Camera/Microphone access required';
+    if (err.name === 'NotAllowedError') {
+      errorMessage = 'Please allow camera and microphone access to continue';
+    } else if (err.name === 'NotFoundError') {
+      errorMessage = 'No camera or microphone found on your device';
+    }
+    
+    alert(errorMessage);
+    
+    // Show modal again on error
+    if (modal) modal.classList.remove('hidden');
     hideLoading();
+    
+    // Clear loading topic display
+    if (typeof hideSearchingTopic === 'function') {
+      hideSearchingTopic();
+    }
   }
 }
-
 function selectTopic(topic) {
   document.getElementById('interestInput').value = topic;
 }
