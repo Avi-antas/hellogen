@@ -162,17 +162,22 @@
       color: white;
       border: none;
       cursor: pointer;
-      font-size: 24px;
+      font-size: 28px;
       z-index: 15;
       box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
       animation: pulse 2s infinite;
       display: none;
       align-items: center;
       justify-content: center;
+      transition: all 0.3s ease;
     }
 
     .red-flag-btn.visible {
       display: flex;
+    }
+
+    .red-flag-btn:hover {
+      transform: scale(1.1);
     }
 
     .moderation-warning {
@@ -187,6 +192,106 @@
       animation: slideUp 0.3s ease;
       font-weight: bold;
       white-space: nowrap;
+    }
+
+    /* Report Modal Styles */
+    .report-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .report-modal.active {
+      display: flex;
+    }
+
+    .report-modal-content {
+      background: white;
+      padding: 30px;
+      border-radius: 20px;
+      width: 90%;
+      max-width: 500px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .report-modal-content h3 {
+      margin-bottom: 20px;
+      color: #333;
+      font-size: 24px;
+    }
+
+    .violations-list {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 10px;
+      margin: 15px 0;
+      font-size: 13px;
+      font-family: monospace;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .violation-item {
+      padding: 8px;
+      margin: 5px 0;
+      background: #fee;
+      border-left: 3px solid #dc3545;
+      border-radius: 5px;
+    }
+
+    .violation-item small {
+      color: #666;
+      display: block;
+      margin-top: 4px;
+    }
+
+    .report-modal-content select,
+    .report-modal-content textarea {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .report-modal-content textarea {
+      height: 100px;
+      resize: vertical;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .modal-buttons button {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .btn-submit {
+      background: #28a745;
+      color: white;
+    }
+
+    .btn-cancel {
+      background: #6c757d;
+      color: white;
     }
 
     @keyframes blink {
@@ -258,6 +363,19 @@
       font-size: 16px;
     }
 
+    .violation-counter {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(0,0,0,0.7);
+      padding: 5px 12px;
+      border-radius: 20px;
+      color: #ffa502;
+      font-size: 12px;
+      z-index: 15;
+      font-family: monospace;
+    }
+
     @media (max-width: 768px) {
       .control-btn {
         width: 50px;
@@ -289,15 +407,36 @@
   </div>
 
   <div class="controls" id="controls">
-    <button class="control-btn mute" id="muteBtn" onclick="toggleAudio()">🎤</button>
-    <button class="control-btn next" onclick="nextUser()">⏭️</button>
-    <button class="control-btn end" onclick="endCall()">📞</button>
+    <button class="control-btn mute" id="muteBtn">🎤</button>
+    <button class="control-btn next" id="nextBtn">⏭️</button>
+    <button class="control-btn end" id="endBtn">📞</button>
   </div>
 
-  <button class="red-flag-btn" id="redFlagBtn" onclick="reportViolation()">🚩</button>
+  <button class="red-flag-btn" id="redFlagBtn">🚩</button>
 
   <div class="status-indicator" id="statusIndicator">Connecting...</div>
   <div class="timer hidden" id="timer"></div>
+  <div class="violation-counter" id="violationCounter">🚨 Violations: 0</div>
+
+  <!-- Report Modal -->
+  <div class="report-modal" id="reportModal">
+    <div class="report-modal-content">
+      <h3>🚨 Report Violation</h3>
+      <div class="violations-list" id="violationsList"></div>
+      <select id="violationType">
+        <option value="harassment">Harassment / Bullying</option>
+        <option value="inappropriate">Inappropriate Content</option>
+        <option value="hate_speech">Hate Speech</option>
+        <option value="spam">Spam / Scam</option>
+        <option value="other">Other</option>
+      </select>
+      <textarea id="violationDesc" placeholder="Describe what happened..."></textarea>
+      <div class="modal-buttons">
+        <button class="btn-submit" id="submitReportBtn">✅ Submit Report</button>
+        <button class="btn-cancel" id="closeModalBtn">❌ Cancel</button>
+      </div>
+    </div>
+  </div>
 
   <div class="loading-overlay hidden" id="loadingOverlay">
     <div class="loading-content">
@@ -333,10 +472,19 @@
     let socket = null;
     let audioMuted = false;
     let guestTimerInterval = null;
+    
+    // Moderation variables
     let violationCount = 0;
+    let violationsList = [];
     let mediaRecorder = null;
     let audioChunks = [];
     let handsDetector = null;
+    let gestureMonitoringActive = false;
+    let audioMonitoringActive = false;
+    
+    // RED FLAG: Auto-disconnect is DISABLED
+    let autoDisconnectEnabled = false;
+    let redFlagShown = false;
 
     // ============================================
     // CHECK AUTHENTICATION
@@ -347,466 +495,12 @@
     }
 
     // ============================================
-    // SOCKET CONNECTION
-    // ============================================
-    function initSocket() {
-      socket = io(BACKEND_URL, {
-        transports: ['websocket', 'polling'],
-        auth: { token: token },
-        reconnection: true
-      });
-
-      socket.on('connect', () => {
-        mySocketId = socket.id;
-        isConnected = true;
-        console.log('✅ Connected to backend');
-        updateStatus('Connected! Finding match...');
-        startCamera();
-      });
-
-      socket.on('connect_error', (error) => {
-        console.error('Connection error:', error);
-        updateStatus('Connection failed. Check backend.');
-        hideLoading();
-      });
-
-      socket.on('matched', async (id) => {
-        partnerId = id;
-        isMatched = true;
-        console.log('🎯 Matched with', id);
-        updateStatus('🎉 Connected! Video call active');
-        hideLoading();
-
-        document.getElementById('localVideoWrapper').classList.remove('local-fullscreen');
-        document.getElementById('localVideoWrapper').classList.add('local-video');
-        document.getElementById('partnerVideoWrapper').classList.remove('partner-hidden');
-
-        const isInitiator = mySocketId < partnerId;
-        createPeer(isInitiator);
-
-        // Start AI Moderation after match
-        startAIModeration();
-      });
-
-      socket.on('offer', async (data) => {
-        partnerId = data.from;
-        isMatched = true;
-        console.log('📥 Received offer');
-        updateStatus('📞 Connecting...');
-        hideLoading();
-
-        document.getElementById('localVideoWrapper').classList.remove('local-fullscreen');
-        document.getElementById('localVideoWrapper').classList.add('local-video');
-        document.getElementById('partnerVideoWrapper').classList.remove('partner-hidden');
-
-        createPeer(false);
-
-        try {
-          await peer.setRemoteDescription(data.offer);
-          const answer = await peer.createAnswer();
-          await peer.setLocalDescription(answer);
-          socket.emit("answer", { to: partnerId, answer });
-        } catch (err) {
-          console.error('Offer error:', err);
-        }
-      });
-
-      socket.on('answer', async (data) => {
-        if (peer) {
-          await peer.setRemoteDescription(data.answer);
-          console.log('✅ Answer received');
-        }
-      });
-
-      socket.on('ice-candidate', async (data) => {
-        if (peer) {
-          await peer.addIceCandidate(data.candidate);
-          console.log('❄️ ICE candidate added');
-        }
-      });
-
-      socket.on('partner-disconnected', () => {
-        console.log('Partner disconnected');
-        updateStatus('💔 Partner left. Finding new partner...');
-        stopAIModeration();
-        cleanup();
-        resetToWaiting();
-      });
-
-      socket.on('partner-left-waiting', () => {
-        console.log('Partner left, waiting for new partner');
-        updateStatus('👋 Partner left. Finding someone new...');
-        stopAIModeration();
-        cleanup();
-        resetToWaiting();
-      });
-
-      socket.on('show-red-flag', (data) => {
-        console.log('🚩 Red flag received:', data);
-        showRedFlag(data.reason || 'Policy violation detected', data.severity || 3);
-      });
-
-      socket.on('call-ended-violation', (data) => {
-        updateStatus(data.message || 'Call ended due to policy violation');
-        showModerationWarning(data.message || 'Call ended due to policy violation', '#ff0000');
-        setTimeout(() => {
-          window.location.href = './topics.html';
-        }, 3000);
-      });
-    }
-
-    // ============================================
-    // AI MODERATION SYSTEM
-    // ============================================
-    
-    // Audio Moderation (Whisper + ToxicBERT)
-    async function startAudioMonitoring() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        
-        mediaRecorder = new MediaRecorder(stream);
-        mediaRecorder.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            audioChunks.push(event.data);
-          }
-        };
-        
-        mediaRecorder.onstop = async () => {
-          const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-          audioChunks = [];
-          await analyzeAudioChunk(audioBlob);
-        };
-        
-        mediaRecorder.start(4000);
-        console.log('✅ Audio monitoring active');
-        
-      } catch (err) {
-        console.error('Audio monitoring failed:', err);
-      }
-    }
-
-    async function analyzeAudioChunk(audioBlob) {
-      const formData = new FormData();
-      formData.append('audio', audioBlob);
-      
-      try {
-        const response = await fetch(`${BACKEND_URL}/moderation/audio`, {
-          method: 'POST',
-          body: formData
-        });
-        
-        const result = await response.json();
-        
-        if (result.isInappropriate && result.confidence > 0.6) {
-          handleViolation({
-            type: 'audio_slang',
-            detected: result.detected || [],
-            transcript: result.transcript,
-            severity: result.severity || 3,
-            confidence: result.confidence
-          });
-        }
-      } catch (err) {
-        console.error('Analysis failed:', err);
-      }
-    }
-
-    // Gesture Moderation (MediaPipe Hands)
-    async function startGestureMonitoring() {
-      const videoElement = document.getElementById('remoteVideo');
-      if (!videoElement) return;
-      
-      handsDetector = new Hands({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-      });
-      
-      handsDetector.setOptions({
-        maxNumHands: 2,
-        modelComplexity: 1,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5
-      });
-      
-      handsDetector.onResults((results) => {
-        if (results.multiHandLandmarks) {
-          for (const landmarks of results.multiHandLandmarks) {
-            const gesture = classifyGesture(landmarks);
-            if (gesture.isOffensive && gesture.confidence > 0.7) {
-              handleViolation({
-                type: 'offensive_gesture',
-                gesture: gesture.name,
-                severity: 4,
-                confidence: gesture.confidence
-              });
-            }
-          }
-        }
-      });
-      
-      // Process video frames
-      const processVideo = async () => {
-        if (videoElement && videoElement.readyState >= 2 && handsDetector) {
-          await handsDetector.send({ image: videoElement });
-        }
-        requestAnimationFrame(processVideo);
-      };
-      
-      processVideo();
-      console.log('✅ Gesture monitoring active');
-    }
-
-    function classifyGesture(landmarks) {
-      const indexTip = landmarks[8];
-      const middleTip = landmarks[12];
-      const ringTip = landmarks[16];
-      const pinkyTip = landmarks[20];
-      
-      const indexIP = landmarks[6];
-      const middleIP = landmarks[10];
-      const ringIP = landmarks[14];
-      const pinkyIP = landmarks[18];
-      
-      // Middle finger detection
-      const isMiddleUp = middleTip.y < middleIP.y;
-      const isIndexDown = indexTip.y > indexIP.y;
-      const isRingDown = ringTip.y > ringIP.y;
-      const isPinkyDown = pinkyTip.y > pinkyIP.y;
-      
-      if (isMiddleUp && isIndexDown && isRingDown && isPinkyDown) {
-        return { isOffensive: true, name: 'middle_finger', confidence: 0.95 };
-      }
-      
-      // Fist detection
-      const allFingersDown = indexTip.y > indexIP.y &&
-                            middleTip.y > middleIP.y &&
-                            ringTip.y > ringIP.y &&
-                            pinkyTip.y > pinkyIP.y;
-      
-      if (allFingersDown) {
-        return { isOffensive: true, name: 'fist', confidence: 0.8 };
-      }
-      
-      return { isOffensive: false, name: 'normal', confidence: 0 };
-    }
-
-    function handleViolation(violation) {
-      console.log('🚨 VIOLATION DETECTED:', violation);
-      
-      violationCount++;
-      
-      let action = 'warn';
-      let severity = violation.severity || 3;
-      
-      if (severity >= 4 || violationCount >= 3) {
-        action = 'end_call';
-      } else if (severity >= 3 || violationCount >= 2) {
-        action = 'red_flag';
-      }
-      
-      // Send to backend
-      socket.emit('moderation-violation', {
-        to: partnerId,
-        type: violation.type,
-        details: violation,
-        action: action,
-        violationCount: violationCount
-      });
-      
-      // Show warning
-      let message = '';
-      let color = '#ffa502';
-      
-      if (violation.type === 'audio_slang') {
-        message = `⚠️ Inappropriate language detected: ${violation.detected[0]?.word || 'abusive words'}`;
-        color = '#ffa502';
-      } else if (violation.type === 'offensive_gesture') {
-        message = `🚫 Offensive gesture detected: ${violation.gesture}`;
-        color = '#ff4757';
-      }
-      
-      if (action === 'end_call') {
-        message = `❗ SEVERE: ${message} Call will end`;
-        color = '#ff0000';
-      }
-      
-      showModerationWarning(message, color);
-      
-      if (action === 'end_call') {
-        setTimeout(() => {
-          socket.emit("next");
-          window.location.href = './topics.html';
-        }, 3000);
-      }
-    }
-
-    function showModerationWarning(message, color) {
-      const warningDiv = document.createElement('div');
-      warningDiv.className = 'moderation-warning';
-      warningDiv.style.background = color;
-      warningDiv.style.color = 'white';
-      warningDiv.textContent = message;
-      document.body.appendChild(warningDiv);
-      setTimeout(() => warningDiv.remove(), 4000);
-    }
-
-    function showRedFlag(reason, severity) {
-      const redFlagBtn = document.getElementById('redFlagBtn');
-      redFlagBtn.classList.add('visible');
-      redFlagBtn.title = reason;
-      
-      if (severity >= 4) {
-        redFlagBtn.style.animation = 'pulse 0.5s infinite';
-      }
-      
-      // Auto-hide after 10 seconds
-      setTimeout(() => {
-        redFlagBtn.classList.remove('visible');
-      }, 10000);
-    }
-
-    function reportViolation() {
-      if (!partnerId) return;
-      
-      if (confirm('Report this user for policy violation?')) {
-        socket.emit('report-violation', {
-          reportedUserId: partnerId,
-          reason: 'ai_detected_violation',
-          severity: 'high'
-        });
-        showModerationWarning('✅ Report submitted. Thank you for keeping our community safe.', '#2ed573');
-        document.getElementById('redFlagBtn').classList.remove('visible');
-      }
-    }
-
-    function startAIModeration() {
-      startAudioMonitoring();
-      startGestureMonitoring();
-      console.log('🎯 AI Moderation Active');
-    }
-
-    function stopAIModeration() {
-      if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-      }
-      if (handsDetector) {
-        handsDetector.close();
-        handsDetector = null;
-      }
-    }
-
-    // ============================================
-    // CAMERA & PEER
-    // ============================================
-    async function startCamera() {
-      try {
-        localStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true
-        });
-
-        document.getElementById('localVideo').srcObject = localStream;
-
-        showLoading('Finding your match...');
-        updateStatus('Looking for ' + selectedTopic + ' partners...');
-
-        socket.emit("joinQueue", {
-          interests: [selectedTopic],
-          userId: localStorage.getItem('userId'),
-          isGuest: isGuest
-        });
-
-        if (isGuest === true) {
-          startGuestTimer();
-          document.getElementById('timer').classList.remove('hidden');
-        } else {
-          document.getElementById('timer').classList.add('hidden');
-        }
-
-      } catch (err) {
-        console.error('Camera error:', err);
-        alert('Camera/Microphone access required');
-        window.location.href = './topics.html';
-      }
-    }
-
-    function createPeer(isInitiator) {
-      if (peer) {
-        peer.close();
-        peer = null;
-      }
-
-      const configuration = {
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" },
-          { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" }
-        ]
-      };
-
-      peer = new RTCPeerConnection(configuration);
-
-      peer.oniceconnectionstatechange = () => {
-        if (peer.iceConnectionState === 'connected') {
-          updateStatus('🎬 Connected!');
-          hideLoading();
-        }
-      };
-
-      peer.onicecandidate = (event) => {
-        if (event.candidate && partnerId) {
-          socket.emit("ice-candidate", { to: partnerId, candidate: event.candidate });
-        }
-      };
-
-      peer.ontrack = (event) => {
-        document.getElementById("remoteVideo").srcObject = event.streams[0];
-      };
-
-      if (localStream) {
-        localStream.getTracks().forEach(track => {
-          peer.addTrack(track, localStream);
-        });
-      }
-
-      if (isInitiator) {
-        peer.createOffer()
-          .then(offer => peer.setLocalDescription(offer))
-          .then(() => {
-            socket.emit("offer", { to: partnerId, offer: peer.localDescription });
-          })
-          .catch(err => console.error("Offer error:", err));
-      }
-    }
-
-    // ============================================
-    // QUEUE CONTROLS
-    // ============================================
-    function cancelQueue() {
-      console.log('Cancelling queue...');
-      if (socket && socket.connected) {
-        socket.emit("next");
-      }
-      window.location.href = './topics.html';
-    }
-
-    function resetToWaiting() {
-      if (socket && socket.connected) {
-        showLoading('Finding new partner...');
-        updateStatus('Searching...');
-        socket.emit("joinQueue", {
-          interests: [selectedTopic],
-          userId: localStorage.getItem('userId'),
-          isGuest: isGuest
-        });
-      }
-    }
-
-    // ============================================
-    // UI CONTROLS
+    // HELPER FUNCTIONS
     // ============================================
     function updateStatus(message) {
       const statusDiv = document.getElementById('statusIndicator');
       statusDiv.textContent = message;
+      console.log(`📡 Status: ${message}`);
     }
 
     function showLoading(text) {
@@ -821,35 +515,603 @@
       overlay.classList.add('hidden');
     }
 
-    function toggleAudio() {
-      if (localStream) {
-        const audioTrack = localStream.getAudioTracks()[0];
-        if (audioTrack) {
-          audioTrack.enabled = !audioTrack.enabled;
-          const btn = document.getElementById('muteBtn');
-          btn.textContent = audioTrack.enabled ? '🎤' : '🔇';
-        }
+    function updateViolationCounter() {
+      const counter = document.getElementById('violationCounter');
+      counter.textContent = `🚨 Violations: ${violationCount}`;
+      if (violationCount > 0) {
+        counter.style.color = '#ff4757';
       }
     }
 
+    function showModerationWarning(message, color) {
+      const warningDiv = document.createElement('div');
+      warningDiv.className = 'moderation-warning';
+      warningDiv.style.background = color;
+      warningDiv.style.color = 'white';
+      warningDiv.textContent = message;
+      document.body.appendChild(warningDiv);
+      setTimeout(() => warningDiv.remove(), 4000);
+      console.log(`⚠️ Moderation Warning: ${message}`);
+    }
+
+    // ============================================
+    // VIOLATION HANDLER - NO AUTO-DISCONNECT
+    // ============================================
+    function handleViolation(violation) {
+      violationCount++;
+      
+      const violationRecord = {
+        id: Date.now(),
+        type: violation.type,
+        gesture: violation.gesture,
+        detected: violation.detected,
+        transcript: violation.transcript,
+        severity: violation.severity || 3,
+        confidence: violation.confidence,
+        timestamp: new Date().toISOString()
+      };
+      
+      violationsList.push(violationRecord);
+      updateViolationCounter();
+      
+      console.log(`🚨 VIOLATION #${violationCount}:`, violationRecord);
+      
+      // Build warning message
+      let message = '';
+      let color = '#ffa502';
+      
+      if (violation.type === 'audio_slang') {
+        const badWord = violation.detected?.[0]?.word || 'inappropriate language';
+        message = `⚠️ Inappropriate language detected: "${badWord}"`;
+        color = '#ffa502';
+      } else if (violation.type === 'offensive_gesture') {
+        message = `🚫 Offensive gesture detected: ${violation.gesture}`;
+        color = '#ff4757';
+      }
+      
+      // SHOW RED FLAG BUTTON (instead of auto-disconnecting)
+      if (!redFlagShown) {
+        const redFlagBtn = document.getElementById('redFlagBtn');
+        redFlagBtn.classList.add('visible');
+        redFlagShown = true;
+        showModerationWarning('🚩 Red flag button available - Click to report this user', '#ff0000');
+        console.log('🔴 RED FLAG BUTTON SHOWN - User can report violation');
+      }
+      
+      // Show the warning
+      showModerationWarning(message, color);
+      
+      // Send to backend for logging
+      if (socket && partnerId) {
+        socket.emit('moderation-violation', {
+          to: partnerId,
+          type: violation.type,
+          details: violation,
+          violationCount: violationCount
+        });
+      }
+    }
+
+    // ============================================
+    // RED FLAG REPORT FUNCTION
+    // ============================================
+    function showReportModal() {
+      const modal = document.getElementById('reportModal');
+      const violationsListDiv = document.getElementById('violationsList');
+      
+      // Populate violations list
+      if (violationsList.length === 0) {
+        violationsListDiv.innerHTML = '<p style="color:#999;">No automatic violations detected. You can still submit a manual report.</p>';
+      } else {
+        violationsListDiv.innerHTML = `
+          <strong>Detected violations (${violationsList.length}):</strong>
+          ${violationsList.map(v => `
+            <div class="violation-item">
+              <strong>${v.type === 'audio_slang' ? '🎤 Audio' : '✋ Gesture'}</strong>: 
+              ${v.gesture || v.detected?.[0]?.word || 'Violation'}<br>
+              <small>${new Date(v.timestamp).toLocaleTimeString()} | Severity: ${v.severity}/5</small>
+            </div>
+          `).join('')}
+        `;
+      }
+      
+      modal.classList.add('active');
+    }
+    
+    function hideReportModal() {
+      const modal = document.getElementById('reportModal');
+      modal.classList.remove('active');
+    }
+    
+    async function submitReport() {
+      if (!partnerId) {
+        showModerationWarning('No active chat to report', '#ff4757');
+        return;
+      }
+      
+      const violationType = document.getElementById('violationType').value;
+      const description = document.getElementById('violationDesc').value;
+      
+      const reportData = {
+        reportedUserId: partnerId,
+        reporterId: mySocketId,
+        isGuest: isGuest,
+        guestId: localStorage.getItem('guest_id') || 'unknown',
+        topic: selectedTopic,
+        violations: violationsList,
+        violationType: violationType,
+        description: description,
+        timestamp: new Date().toISOString(),
+        violationCount: violationCount
+      };
+      
+      // Get IP address for guest tracking
+      if (isGuest) {
+        try {
+          const ipResponse = await fetch('https://api.ipify.org?format=json');
+          const ipData = await ipResponse.json();
+          reportData.guestIp = ipData.ip;
+        } catch (error) {
+          console.warn('Could not fetch IP:', error);
+          reportData.guestIp = 'unknown';
+        }
+      }
+      
+      console.log('📤 Submitting report:', reportData);
+      
+      try {
+        // Send to backend
+        const response = await fetch(`${BACKEND_URL}/moderation/report`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(reportData)
+        });
+        
+        if (response.ok) {
+          showModerationWarning('✅ Report submitted! Thank you for keeping our community safe.', '#2ed573');
+          console.log('✅ Report submitted successfully');
+          
+          // Hide red flag button
+          document.getElementById('redFlagBtn').classList.remove('visible');
+          redFlagShown = false;
+          
+          // Clear form
+          document.getElementById('violationDesc').value = '';
+          hideReportModal();
+        } else {
+          throw new Error('Server returned ' + response.status);
+        }
+      } catch (error) {
+        console.error('❌ Report submission failed:', error);
+        
+        // Fallback: Save locally
+        const reports = JSON.parse(localStorage.getItem('local_reports') || '[]');
+        reports.push(reportData);
+        localStorage.setItem('local_reports', JSON.stringify(reports));
+        
+        showModerationWarning('📱 Report saved locally (offline mode). Will sync when online.', '#ffa502');
+        document.getElementById('redFlagBtn').classList.remove('visible');
+        redFlagShown = false;
+        hideReportModal();
+      }
+    }
+
+    // ============================================
+    // AI MODERATION SYSTEM
+    // ============================================
+    
+    // Audio Moderation
+    async function startAudioMonitoring() {
+      if (audioMonitoringActive) return;
+      
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunks.push(event.data);
+          }
+        };
+        
+        mediaRecorder.onstop = async () => {
+          if (audioChunks.length === 0) return;
+          const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+          audioChunks = [];
+          await analyzeAudioChunk(audioBlob);
+        };
+        
+        mediaRecorder.start(5000); // 5 second chunks
+        audioMonitoringActive = true;
+        console.log('✅ Audio monitoring active');
+        
+      } catch (err) {
+        console.error('Audio monitoring failed:', err);
+      }
+    }
+    
+    async function analyzeAudioChunk(audioBlob) {
+      const formData = new FormData();
+      formData.append('audio', audioBlob);
+      
+      try {
+        const response = await fetch(`${BACKEND_URL}/moderation/audio`, {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          
+          if (result.isInappropriate && result.confidence > 0.6) {
+            handleViolation({
+              type: 'audio_slang',
+              detected: result.detected || [],
+              transcript: result.transcript,
+              severity: result.severity || 3,
+              confidence: result.confidence
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Audio analysis failed (backend may be offline):', err);
+      }
+    }
+    
+    // Gesture Moderation
+    async function startGestureMonitoring() {
+      if (gestureMonitoringActive) return;
+      
+      const videoElement = document.getElementById('remoteVideo');
+      if (!videoElement) {
+        setTimeout(startGestureMonitoring, 1000);
+        return;
+      }
+      
+      try {
+        handsDetector = new Hands({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+        
+        handsDetector.setOptions({
+          maxNumHands: 2,
+          modelComplexity: 1,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5
+        });
+        
+        handsDetector.onResults((results) => {
+          if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            for (const landmarks of results.multiHandLandmarks) {
+              const gesture = classifyGesture(landmarks);
+              if (gesture.isOffensive && gesture.confidence > 0.7) {
+                handleViolation({
+                  type: 'offensive_gesture',
+                  gesture: gesture.name,
+                  severity: 4,
+                  confidence: gesture.confidence
+                });
+              }
+            }
+          }
+        });
+        
+        // Process video frames
+        const processVideo = async () => {
+          if (!gestureMonitoringActive) return;
+          if (videoElement && videoElement.readyState >= 2 && handsDetector) {
+            try {
+              await handsDetector.send({ image: videoElement });
+            } catch (err) {
+              // Silently fail
+            }
+          }
+          requestAnimationFrame(processVideo);
+        };
+        
+        gestureMonitoringActive = true;
+        processVideo();
+        console.log('✅ Gesture monitoring active');
+        
+      } catch (err) {
+        console.error('Gesture monitoring failed:', err);
+      }
+    }
+    
+    function classifyGesture(landmarks) {
+      const indexTip = landmarks[8];
+      const middleTip = landmarks[12];
+      const ringTip = landmarks[16];
+      const pinkyTip = landmarks[20];
+      
+      const indexIP = landmarks[6];
+      const middleIP = landmarks[10];
+      const ringIP = landmarks[14];
+      const pinkyIP = landmarks[18];
+      
+      // Middle finger detection (offensive)
+      const isMiddleUp = middleTip.y < middleIP.y;
+      const isIndexDown = indexTip.y > indexIP.y;
+      const isRingDown = ringTip.y > ringIP.y;
+      const isPinkyDown = pinkyTip.y > pinkyIP.y;
+      
+      if (isMiddleUp && isIndexDown && isRingDown && isPinkyDown) {
+        return { isOffensive: true, name: 'middle_finger', confidence: 0.95 };
+      }
+      
+      // Fist detection (aggressive)
+      const allFingersDown = indexTip.y > indexIP.y &&
+                            middleTip.y > middleIP.y &&
+                            ringTip.y > ringIP.y &&
+                            pinkyTip.y > pinkyIP.y;
+      
+      if (allFingersDown) {
+        return { isOffensive: true, name: 'fist', confidence: 0.8 };
+      }
+      
+      return { isOffensive: false, name: 'normal', confidence: 0 };
+    }
+    
+    function stopAIModeration() {
+      gestureMonitoringActive = false;
+      audioMonitoringActive = false;
+      
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+      }
+      if (handsDetector) {
+        handsDetector.close();
+        handsDetector = null;
+      }
+      console.log('🛑 AI Moderation stopped');
+    }
+    
+    function startAIModeration() {
+      console.log('🎯 AI Moderation Active - Auto-disconnect DISABLED');
+      console.log('🔴 Offenses will show RED FLAG button instead of disconnecting');
+      startAudioMonitoring();
+      startGestureMonitoring();
+    }
+    
+    // ============================================
+    // SOCKET CONNECTION
+    // ============================================
+    function initSocket() {
+      socket = io(BACKEND_URL, {
+        transports: ['websocket', 'polling'],
+        auth: { token: token },
+        reconnection: true
+      });
+      
+      socket.on('connect', () => {
+        mySocketId = socket.id;
+        isConnected = true;
+        console.log('✅ Connected to backend');
+        updateStatus('Connected! Finding match...');
+        startCamera();
+      });
+      
+      socket.on('connect_error', (error) => {
+        console.error('Connection error:', error);
+        updateStatus('Connection failed. Check backend.');
+        hideLoading();
+      });
+      
+      socket.on('matched', async (id) => {
+        partnerId = id;
+        isMatched = true;
+        console.log('🎯 Matched with', id);
+        updateStatus('🎉 Connected! Video call active');
+        hideLoading();
+        
+        document.getElementById('localVideoWrapper').classList.remove('local-fullscreen');
+        document.getElementById('localVideoWrapper').classList.add('local-video');
+        document.getElementById('partnerVideoWrapper').classList.remove('partner-hidden');
+        
+        const isInitiator = mySocketId < partnerId;
+        createPeer(isInitiator);
+        
+        // Start AI Moderation after match
+        startAIModeration();
+      });
+      
+      socket.on('offer', async (data) => {
+        partnerId = data.from;
+        isMatched = true;
+        console.log('📥 Received offer');
+        updateStatus('📞 Connecting...');
+        hideLoading();
+        
+        document.getElementById('localVideoWrapper').classList.remove('local-fullscreen');
+        document.getElementById('localVideoWrapper').classList.add('local-video');
+        document.getElementById('partnerVideoWrapper').classList.remove('partner-hidden');
+        
+        createPeer(false);
+        
+        try {
+          await peer.setRemoteDescription(data.offer);
+          const answer = await peer.createAnswer();
+          await peer.setLocalDescription(answer);
+          socket.emit("answer", { to: partnerId, answer });
+        } catch (err) {
+          console.error('Offer error:', err);
+        }
+      });
+      
+      socket.on('answer', async (data) => {
+        if (peer) {
+          await peer.setRemoteDescription(data.answer);
+          console.log('✅ Answer received');
+        }
+      });
+      
+      socket.on('ice-candidate', async (data) => {
+        if (peer) {
+          await peer.addIceCandidate(data.candidate);
+          console.log('❄️ ICE candidate added');
+        }
+      });
+      
+      socket.on('partner-disconnected', () => {
+        console.log('Partner disconnected');
+        updateStatus('💔 Partner left. Finding new partner...');
+        stopAIModeration();
+        cleanup();
+        resetToWaiting();
+      });
+      
+      socket.on('partner-left-waiting', () => {
+        console.log('Partner left, waiting for new partner');
+        updateStatus('👋 Partner left. Finding someone new...');
+        stopAIModeration();
+        cleanup();
+        resetToWaiting();
+      });
+      
+      // REMOVED: call-ended-violation handler - NO AUTO-DISCONNECT
+      // Instead, just show red flag button
+      socket.on('show-red-flag', (data) => {
+        console.log('🚩 Red flag received from partner:', data);
+        if (!redFlagShown) {
+          document.getElementById('redFlagBtn').classList.add('visible');
+          redFlagShown = true;
+          showModerationWarning(data.reason || 'Policy violation reported', '#ff4757');
+        }
+      });
+    }
+    
+    // ============================================
+    // CAMERA & PEER
+    // ============================================
+    async function startCamera() {
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true
+        });
+        
+        document.getElementById('localVideo').srcObject = localStream;
+        
+        showLoading('Finding your match...');
+        updateStatus('Looking for ' + selectedTopic + ' partners...');
+        
+        socket.emit("joinQueue", {
+          interests: [selectedTopic],
+          userId: localStorage.getItem('userId'),
+          isGuest: isGuest
+        });
+        
+        if (isGuest === true) {
+          startGuestTimer();
+          document.getElementById('timer').classList.remove('hidden');
+        } else {
+          document.getElementById('timer').classList.add('hidden');
+        }
+        
+      } catch (err) {
+        console.error('Camera error:', err);
+        alert('Camera/Microphone access required');
+        window.location.href = './topics.html';
+      }
+    }
+    
+    function createPeer(isInitiator) {
+      if (peer) {
+        peer.close();
+        peer = null;
+      }
+      
+      const configuration = {
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun1.l.google.com:19302" },
+          { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" }
+        ]
+      };
+      
+      peer = new RTCPeerConnection(configuration);
+      
+      peer.oniceconnectionstatechange = () => {
+        if (peer.iceConnectionState === 'connected') {
+          updateStatus('🎬 Connected!');
+          hideLoading();
+        }
+      };
+      
+      peer.onicecandidate = (event) => {
+        if (event.candidate && partnerId) {
+          socket.emit("ice-candidate", { to: partnerId, candidate: event.candidate });
+        }
+      };
+      
+      peer.ontrack = (event) => {
+        document.getElementById("remoteVideo").srcObject = event.streams[0];
+      };
+      
+      if (localStream) {
+        localStream.getTracks().forEach(track => {
+          peer.addTrack(track, localStream);
+        });
+      }
+      
+      if (isInitiator) {
+        peer.createOffer()
+          .then(offer => peer.setLocalDescription(offer))
+          .then(() => {
+            socket.emit("offer", { to: partnerId, offer: peer.localDescription });
+          })
+          .catch(err => console.error("Offer error:", err));
+      }
+    }
+    
+    // ============================================
+    // QUEUE CONTROLS
+    // ============================================
+    function cancelQueue() {
+      console.log('Cancelling queue...');
+      if (socket && socket.connected) {
+        socket.emit("next");
+      }
+      window.location.href = './topics.html';
+    }
+    
+    function resetToWaiting() {
+      // Reset violation tracking for new session
+      violationCount = 0;
+      violationsList = [];
+      redFlagShown = false;
+      document.getElementById('redFlagBtn').classList.remove('visible');
+      updateViolationCounter();
+      
+      if (socket && socket.connected) {
+        showLoading('Finding new partner...');
+        updateStatus('Searching...');
+        socket.emit("joinQueue", {
+          interests: [selectedTopic],
+          userId: localStorage.getItem('userId'),
+          isGuest: isGuest
+        });
+      }
+    }
+    
     function nextUser() {
       if (confirm('Find a new partner?')) {
         stopAIModeration();
-        socket.emit("next");
+        if (socket) socket.emit("next");
         cleanup();
         resetToWaiting();
       }
     }
-
+    
     function endCall() {
       if (confirm('End video call?')) {
         stopAIModeration();
-        socket.emit("next");
+        if (socket) socket.emit("next");
         cleanup();
         window.location.href = './topics.html';
       }
     }
-
+    
     function cleanup() {
       if (peer) {
         peer.close();
@@ -858,7 +1120,7 @@
       partnerId = null;
       isMatched = false;
     }
-
+    
     // ============================================
     // GUEST TIMER
     // ============================================
@@ -867,23 +1129,23 @@
         console.log('Auth user - no timer needed');
         return;
       }
-
+      
       console.log('Guest user - starting 5 min timer');
       let timeLeft = 300;
-
+      
       guestTimerInterval = setInterval(() => {
         timeLeft--;
         const minutes = Math.floor(timeLeft / 60);
         const seconds = timeLeft % 60;
-
+        
         const timerEl = document.getElementById('timer');
         timerEl.textContent = `⏱️ Guest: ${minutes}:${seconds.toString().padStart(2, '0')}`;
         timerEl.classList.remove('hidden');
-
+        
         if (timeLeft <= 60) {
           timerEl.classList.add('warning');
         }
-
+        
         if (timeLeft <= 0) {
           clearInterval(guestTimerInterval);
           alert('Guest session expired. Please sign up to continue!');
@@ -891,14 +1153,45 @@
         }
       }, 1000);
     }
-
+    
+    // ============================================
+    // UI EVENT LISTENERS
+    // ============================================
+    function toggleAudio() {
+      if (localStream) {
+        const audioTrack = localStream.getAudioTracks()[0];
+        if (audioTrack) {
+          audioTrack.enabled = !audioTrack.enabled;
+          const btn = document.getElementById('muteBtn');
+          btn.textContent = audioTrack.enabled ? '🎤' : '🔇';
+          console.log(`Microphone ${audioTrack.enabled ? 'enabled' : 'muted'}`);
+        }
+      }
+    }
+    
     // ============================================
     // INIT
     // ============================================
     function init() {
+      // Set up event listeners
+      document.getElementById('muteBtn').onclick = toggleAudio;
+      document.getElementById('nextBtn').onclick = nextUser;
+      document.getElementById('endBtn').onclick = endCall;
+      document.getElementById('redFlagBtn').onclick = showReportModal;
+      document.getElementById('submitReportBtn').onclick = submitReport;
+      document.getElementById('closeModalBtn').onclick = hideReportModal;
+      
+      // Close modal on outside click
+      window.onclick = (event) => {
+        const modal = document.getElementById('reportModal');
+        if (event.target === modal) {
+          hideReportModal();
+        }
+      };
+      
       initSocket();
     }
-
+    
     init();
   </script>
 </body>
