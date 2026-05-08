@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Set up your profile - Hellogen</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Krub:wght@400;500;600;700&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Krub', sans-serif;
+      background: #0a0a0a;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .profile-container {
+      max-width: 500px;
+      width: 100%;
+      background: #141414;
+      border-radius: 32px;
+      padding: 40px 32px;
+      animation: fadeInUp 0.5s ease;
+      border: 1px solid #2d2d2d;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    h2 {
+      font-size: 28px;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #a3a3a3;
+      margin-bottom: 32px;
+      font-size: 14px;
+    }
+
+    /* Avatar Section */
+    .avatar-section {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .avatar-circle {
+      width: 100px;
+      height: 100px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 52px;
+      margin: 0 auto 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    .avatar-circle:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 25px rgba(102, 126, 234, 0.4);
+    }
+
+    .change-avatar {
+      color: #667eea;
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .change-avatar:hover {
+      text-decoration: underline;
+    }
+
+    /* Emoji Picker */
+    .emoji-picker {
+      display: none;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+      margin-top: 16px;
+      padding: 16px;
+      background: #1f1f1f;
+      border-radius: 20px;
+      border: 1px solid #2d2d2d;
+    }
+
+    .emoji-picker.show {
+      display: grid;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .emoji-option {
+      font-size: 28px;
+      padding: 8px;
+      cursor: pointer;
+      text-align: center;
+      border-radius: 12px;
+      transition: all 0.2s;
+    }
+
+    .emoji-option:hover {
+      background: #2d2d2d;
+      transform: scale(1.1);
+    }
+
+    /* Input Groups */
+    .input-group {
+      margin-bottom: 20px;
+    }
+
+    .input-group label {
+      display: block;
+      color: #a3a3a3;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 14px 18px;
+      background: #1f1f1f;
+      border: 1px solid #2d2d2d;
+      border-radius: 16px;
+      font-size: 16px;
+      font-family: 'Krub', sans-serif;
+      color: white;
+      transition: all 0.3s;
+    }
+
+    .input-group input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .input-group input:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* Email Incentive Box */
+    .email-incentive {
+      background: rgba(102, 126, 234, 0.1);
+      border: 1px solid rgba(102, 126, 234, 0.2);
+      border-radius: 16px;
+      padding: 12px 16px;
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .email-incentive span {
+      font-size: 18px;
+    }
+
+    .email-incentive p {
+      font-size: 12px;
+      color: #a3a3a3;
+      flex: 1;
+    }
+
+    .email-incentive strong {
+      color: #667eea;
+    }
+
+    /* Mode Badge */
+    .mode-badge {
+      display: inline-block;
+      background: rgba(102, 126, 234, 0.2);
+      padding: 4px 12px;
+      border-radius: 50px;
+      font-size: 11px;
+      color: #667eea;
+      margin-bottom: 16px;
+    }
+
+    /* Buttons */
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 32px;
+    }
+
+    .btn-continue {
+      flex: 1;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      padding: 14px 20px;
+      border-radius: 50px;
+      font-size: 16px;
+      font-weight: 600;
+      font-family: 'Krub', sans-serif;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-continue:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-skip {
+      flex: 1;
+      background: transparent;
+      border: 1px solid #2d2d2d;
+      color: white;
+      padding: 14px 20px;
+      border-radius: 50px;
+      font-size: 16px;
+      font-weight: 500;
+      font-family: 'Krub', sans-serif;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-skip:hover {
+      border-color: #667eea;
+      background: rgba(102, 126, 234, 0.1);
+    }
+
+    /* Loading state */
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-left: 8px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .btn-continue:disabled, .btn-skip:disabled {
+      opacity: 0.6;
+      transform: none;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="profile-container">
+    <div class="mode-badge" id="modeBadge">✨ Guest Mode</div>
+    <h2>Create your vibe</h2>
+    <p class="subtitle">This is how others will see you</p>
+    
+    <!-- Avatar Section -->
+    <div class="avatar-section">
+      <div class="avatar-circle" id="avatarCircle">😎</div>
+      <div class="change-avatar" id="changeAvatarBtn">Change avatar</div>
+      <div class="emoji-picker" id="emojiPicker">
+        <div class="emoji-option">😎</div><div class="emoji-option">🦊</div>
+        <div class="emoji-option">🐱</div><div class="emoji-option">👾</div>
+        <div class="emoji-option">🚀</div><div class="emoji-option">🌟</div>
+        <div class="emoji-option">🔥</div><div class="emoji-option">💀</div>
+        <div class="emoji-option">👻</div><div class="emoji-option">🤖</div>
+        <div class="emoji-option">🐉</div><div class="emoji-option">🍕</div>
+        <div class="emoji-option">⚡</div><div class="emoji-option">💎</div>
+        <div class="emoji-option">🌸</div><div class="emoji-option">🌈</div>
+      </div>
+    </div>
+    
+    <!-- Name Input -->
+    <div class="input-group">
+      <label>Your name</label>
+      <input type="text" id="usernameInput" placeholder="e.g., Alex" maxlength="20" autocomplete="off">
+    </div>
+    
+    <!-- Email Input with Incentive -->
+    <div class="input-group">
+      <label>Email <span id="emailOptional" style="color:#6b6b6b;">(optional)</span></label>
+      <input type="email" id="emailInput" placeholder="Enter your email" autocomplete="off">
+      <div class="email-incentive">
+        <span>✨</span>
+        <p>Add your email to <strong>save your progress</strong> and get <strong>better matches</strong> across devices</p>
+      </div>
+    </div>
+    
+    <!-- Buttons -->
+    <div class="btn-group">
+      <button class="btn-skip" id="skipBtn">Skip for now</button>
+      <button class="btn-continue" id="continueBtn">Continue →</button>
+    </div>
+  </div>
+
+  <script>
+    const BACKEND_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? 'http://localhost:5000'
+      : 'https://hellogen.onrender.com';
+
+    // Get URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode'); // 'auth' or 'guest'
+    const prefillEmail = urlParams.get('email');
+    const tempToken = urlParams.get('tempToken');
+
+    // State
+    let selectedEmoji = '😎';
+    let isLoading = false;
+
+    // DOM Elements
+    const modeBadge = document.getElementById('modeBadge');
+    const avatarCircle = document.getElementById('avatarCircle');
+    const changeAvatarBtn = document.getElementById('changeAvatarBtn');
+    const emojiPicker = document.getElementById('emojiPicker');
+    const usernameInput = document.getElementById('usernameInput');
+    const emailInput = document.getElementById('emailInput');
+    const emailOptional = document.getElementById('emailOptional');
+    const continueBtn = document.getElementById('continueBtn');
+    const skipBtn = document.getElementById('skipBtn');
+
+    // Set mode-specific UI
+    if (mode === 'auth') {
+      modeBadge.textContent = '🔐 Auth Mode';
+      modeBadge.style.background = 'rgba(46, 213, 115, 0.2)';
+      modeBadge.style.color = '#2ed573';
+      emailOptional.textContent = '(required for account)';
+      if (prefillEmail) {
+        emailInput.value = prefillEmail;
+        emailInput.disabled = true;
+      }
+    } else {
+      modeBadge.textContent = '✨ Guest Mode';
+      // Load saved guest profile from IP tracking
+      loadGuestProfile();
+    }
+
+    // ============================================
+    // AVATAR PICKER
+    // ============================================
+    changeAvatarBtn.addEventListener('click', () => {
+      emojiPicker.classList.toggle('show');
+    });
+    
+    document.querySelectorAll('.emoji-option').forEach(emoji => {
+      emoji.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectedEmoji = emoji.textContent;
+        avatarCircle.textContent = selectedEmoji;
+        emojiPicker.classList.remove('show');
+      });
+    });
+    
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.avatar-section')) {
+        emojiPicker.classList.remove('show');
+      }
+    });
+
+    // ============================================
+    // LOAD GUEST PROFILE (IP BASED)
+    // ============================================
+    async function loadGuestProfile() {
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/guest/profile`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (response.ok) {
+          const profile = await response.json();
+          if (profile.name) usernameInput.value = profile.name;
+          if (profile.avatar) {
+            selectedEmoji = profile.avatar;
+            avatarCircle.textContent = selectedEmoji;
+          }
+          if (profile.email) emailInput.value = profile.email;
+          console.log('📦 Loaded saved guest profile from backend');
+          return;
+        }
+      } catch (error) {
+        console.log('Backend not available, checking localStorage');
+      }
+      
+      // Fallback to localStorage
+      const saved = localStorage.getItem('guestProfile');
+      if (saved) {
+        const profile = JSON.parse(saved);
+        if (profile.name) usernameInput.value = profile.name;
+        if (profile.avatar) {
+          selectedEmoji = profile.avatar;
+          avatarCircle.textContent = selectedEmoji;
+        }
+        if (profile.email) emailInput.value = profile.email;
+        console.log('📦 Loaded guest profile from localStorage');
+      }
+    }
+
+    // ============================================
+    // SAVE GUEST PROFILE (IP BASED)
+    // ============================================
+    async function saveGuestProfile(name, avatar, email = null) {
+      const profileData = { name, avatar, email: email || null };
+      
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/guest/track`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(profileData)
+        });
+        
+        if (response.ok) {
+          console.log('✅ Guest profile saved to backend');
+        }
+      } catch (error) {
+        console.log('Backend not available, saving to localStorage');
+      }
+      
+      localStorage.setItem('guestProfile', JSON.stringify(profileData));
+    }
+
+    // ============================================
+    // COMPLETE AUTH PROFILE
+    // ============================================
+    // Complete Auth Profile - UPDATED
+async function completeAuthProfile(username, avatar, email) {
+  if (!tempToken) {
+    throw new Error('No temp token found');
+  }
+
+  console.log('📤 Completing profile for:', { username, avatar, email, tempToken });
+
+  const response = await fetch(`${BACKEND_URL}/auth/complete-profile-email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 
+      tempToken: tempToken, 
+      username: username, 
+      profilePic: avatar,
+      email: email 
+    })
+  });
+  
+  const data = await response.json();
+  console.log('📥 Response:', data);
+  
+  if (data.success) {
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('userId', data.user.id);
+    localStorage.removeItem('tempToken');
+    localStorage.removeItem('isGuest');
+    return true;
+  } else {
+    throw new Error(data.message || 'Failed to complete profile');
+  }
+}
+
+    // ============================================
+    // CONTINUE TO TOPICS
+    // ============================================
+   // Continue to Topics - UPDATED
+async function continueToTopics() {
+  if (isLoading) return;
+  
+  let username = usernameInput.value.trim();
+  const email = emailInput.value.trim() || null;
+  
+  if (!username) {
+    username = 'Explorer';
+  }
+  
+  isLoading = true;
+  continueBtn.disabled = true;
+  continueBtn.innerHTML = 'Saving... <span class="loading-spinner"></span>';
+  
+  try {
+    if (mode === 'auth') {
+      // Auth user - save to database
+      if (!email && !prefillEmail) {
+        alert('Email is required for auth users');
+        isLoading = false;
+        continueBtn.disabled = false;
+        continueBtn.innerHTML = 'Continue →';
+        return;
+      }
+      
+      await completeAuthProfile(username, selectedEmoji, email || prefillEmail);
+      
+      const userProfile = {
+        name: username,
+        avatar: selectedEmoji,
+        email: email || prefillEmail,
+        isGuest: false,
+        setupComplete: true
+      };
+      localStorage.setItem('userProfile', JSON.stringify(userProfile));
+      
+    } else {
+      // Guest user - save to IP tracking
+      await saveGuestProfile(username, selectedEmoji, email);
+      
+      const userProfile = {
+        name: username,
+        avatar: selectedEmoji,
+        email: email,
+        isGuest: true,
+        setupComplete: true,
+        createdAt: new Date().toISOString()
+      };
+      localStorage.setItem('userProfile', JSON.stringify(userProfile));
+      localStorage.setItem('isGuest', 'true');
+      localStorage.setItem('guestId', 'guest_' + Date.now());
+    }
+    
+    // Set session flag for route protection
+    sessionStorage.setItem('topicPageAllowed', 'true');
+    
+    // Redirect to topics page
+    window.location.href = './topics.html';
+    
+  } catch (error) {
+    console.error('Error saving profile:', error);
+    // ✅ Show user-friendly error message
+    if (error.message.includes('Username already taken')) {
+      alert('❌ ' + error.message);
+      usernameInput.focus();
+      usernameInput.style.borderColor = '#ff4757';
+    } else {
+      alert('Error saving profile. Please try again.\n' + error.message);
+    }
+    isLoading = false;
+    continueBtn.disabled = false;
+    continueBtn.innerHTML = 'Continue →';
+  }
+}
+
+    // ============================================
+    // SKIP (FOR GUESTS ONLY)
+    // ============================================
+    async function skipToTopics() {
+      if (mode === 'auth') {
+        alert('Please complete your profile to continue');
+        return;
+      }
+      
+      if (isLoading) return;
+      
+      let username = usernameInput.value.trim();
+      if (!username) {
+        username = 'Explorer';
+      }
+      
+      isLoading = true;
+      skipBtn.disabled = true;
+      skipBtn.innerHTML = 'Saving... <span class="loading-spinner"></span>';
+      
+      await saveGuestProfile(username, selectedEmoji, null);
+      
+      const userProfile = {
+        name: username,
+        avatar: selectedEmoji,
+        email: null,
+        isGuest: true,
+        setupComplete: true,
+        createdAt: new Date().toISOString()
+      };
+      
+      localStorage.setItem('userProfile', JSON.stringify(userProfile));
+      localStorage.setItem('isGuest', 'true');
+      localStorage.setItem('guestId', 'guest_' + Date.now());
+      sessionStorage.setItem('topicPageAllowed', 'true');
+      
+      window.location.href = './topics.html';
+    }
+
+    // ============================================
+    // EVENT LISTENERS
+    // ============================================
+    continueBtn.addEventListener('click', continueToTopics);
+    skipBtn.addEventListener('click', skipToTopics);
+    
+    usernameInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') continueToTopics();
+    });
+    emailInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') continueToTopics();
+    });
+  </script>
+</body>
+</html>

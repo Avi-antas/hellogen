@@ -5,99 +5,159 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login - hellogen</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Krub:wght@400;500;600;700&display=swap');
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: 'Krub', sans-serif;
+      background: #0a0a0a;
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 20px;
     }
+    
     .auth-container {
-      background: white;
-      border-radius: 30px;
+      background: #141414;
+      border-radius: 32px;
       padding: 40px;
       max-width: 450px;
       width: 100%;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      border: 1px solid #2d2d2d;
+      animation: fadeInUp 0.5s ease;
     }
-    h2 { margin-bottom: 20px; color: #333; text-align: center; }
+    
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    h2 { 
+      margin-bottom: 20px; 
+      color: white; 
+      text-align: center;
+      font-weight: 700;
+      font-size: 28px;
+    }
+    
     input {
       width: 100%;
       padding: 15px;
       margin: 10px 0;
-      border: 2px solid #ddd;
-      border-radius: 15px;
+      border: 1px solid #2d2d2d;
+      border-radius: 16px;
       font-size: 16px;
+      font-family: 'Krub', sans-serif;
+      background: #1f1f1f;
+      color: white;
+      transition: all 0.3s;
     }
+    
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
     .btn {
       width: 100%;
       padding: 15px;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       border: none;
-      border-radius: 15px;
+      border-radius: 50px;
       font-size: 16px;
+      font-weight: 600;
       cursor: pointer;
       margin-top: 20px;
+      font-family: 'Krub', sans-serif;
+      transition: all 0.3s;
     }
+    
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+    
     .step { display: none; }
     .step.active { display: block; }
-    .error { color: red; font-size: 12px; margin-top: 5px; text-align: center; }
-    .success { color: green; font-size: 12px; margin-top: 5px; text-align: center; }
-    .avatar-options {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      margin: 20px 0;
+    
+    .error { 
+      color: #ff4757; 
+      font-size: 12px; 
+      margin-top: 5px; 
+      text-align: center; 
     }
-    .avatar-option {
-      padding: 15px;
-      border-radius: 50%;
-      cursor: pointer;
+    
+    .success { 
+      color: #2ed573; 
+      font-size: 12px; 
+      margin-top: 5px; 
+      text-align: center; 
+    }
+    
+    .helper-text { 
+      font-size: 12px; 
+      color: #a3a3a3; 
+      text-align: center; 
+      margin-top: 10px; 
+    }
+    
+    .guest-link {
       text-align: center;
-      font-size: 30px;
-      background: #f0f0f0;
-      transition: all 0.2s;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid #2d2d2d;
     }
-    .avatar-option.selected { border: 3px solid #667eea; transform: scale(1.05); }
-    .helper-text { font-size: 12px; color: #999; text-align: center; margin-top: 10px; }
+    
+    .guest-link a {
+      color: #667eea;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .guest-link a:hover {
+      text-decoration: underline;
+    }
+    
+    .back-link {
+      text-align: center;
+      margin-top: 16px;
+    }
+    
+    .back-link a {
+      color: #a3a3a3;
+      text-decoration: none;
+      font-size: 13px;
+    }
+    
+    .back-link a:hover {
+      color: white;
+    }
   </style>
 </head>
 <body>
   <div class="auth-container">
     <div id="step1" class="step active">
-      <h2>📧 Login with Email</h2>
-      <input type="email" id="email" placeholder="your@email.com" />
+      <h2>📧 Welcome Back</h2>
+      <input type="email" id="email" placeholder="your@email.com" autocomplete="off" />
       <div class="helper-text">We'll send you a 6-digit OTP</div>
       <div id="emailError" class="error"></div>
       <div id="emailSuccess" class="success"></div>
       <button class="btn" id="sendOtpBtn">Send OTP</button>
+      
     </div>
 
     <div id="step2" class="step">
       <h2>🔐 Verify OTP</h2>
-      <input type="text" id="otpCode" placeholder="Enter 6-digit OTP" maxlength="6" />
+      <input type="text" id="otpCode" placeholder="Enter 6-digit OTP" maxlength="6" autocomplete="off" />
       <div id="otpError" class="error"></div>
       <button class="btn" id="verifyOtpBtn">Verify & Continue</button>
-    </div>
-
-    <div id="step3" class="step">
-      <h2>👤 Complete Profile</h2>
-      <input type="text" id="username" placeholder="Username" />
-      <div class="avatar-selector">
-        <p>Choose Profile Picture:</p>
-        <div class="avatar-options" id="avatarOptions">
-          <div class="avatar-option" data-avatar="😀">😀</div>
-          <div class="avatar-option" data-avatar="😎">😎</div>
-          <div class="avatar-option" data-avatar="🎤">🎤</div>
-          <div class="avatar-option" data-avatar="🎮">🎮</div>
-        </div>
+      <div class="back-link">
+        <a href="#" id="backToEmail">← Back to email</a>
       </div>
-      <div id="profileError" class="error"></div>
-      <button class="btn" id="completeProfileBtn">Complete Setup</button>
     </div>
   </div>
 
@@ -107,15 +167,6 @@
       : 'https://hellogen.onrender.com';
 
     let email = '';
-    let selectedAvatar = '😀';
-
-    document.querySelectorAll('.avatar-option').forEach(opt => {
-      opt.addEventListener('click', () => {
-        document.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
-        opt.classList.add('selected');
-        selectedAvatar = opt.getAttribute('data-avatar');
-      });
-    });
 
     async function sendOTP() {
       email = document.getElementById('email').value;
@@ -150,91 +201,79 @@
     }
 
     async function verifyOTP() {
-      const otp = document.getElementById('otpCode').value;
-      const errorDiv = document.getElementById('otpError');
+  const otp = document.getElementById('otpCode').value;
+  const errorDiv = document.getElementById('otpError');
 
-      if (!otp) { errorDiv.innerText = 'OTP required'; return; }
+  if (!otp) { errorDiv.innerText = 'OTP required'; return; }
 
-      try {
-        const response = await fetch(`${BACKEND_URL}/auth/verify-email-otp`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, otpCode: otp })
-        });
-        const data = await response.json();
+  try {
+    const response = await fetch(`${BACKEND_URL}/auth/verify-email-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otpCode: otp })
+    });
+    const data = await response.json();
 
-        if (data.success) {
-          localStorage.setItem('tempToken', data.tempToken);
-          localStorage.setItem('userEmail', data.email);
+    if (data.success) {
+      // Store temp token
+      localStorage.setItem('tempToken', data.tempToken);
+      localStorage.setItem('userEmail', email);
+      localStorage.removeItem('isGuest');
 
-          if (data.hasProfile === true) {
-            const profileResponse = await fetch(`${BACKEND_URL}/auth/complete-profile-email`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                tempToken: data.tempToken,
-                username: data.username || email.split('@')[0],
-                profilePic: '😀'
-              })
-            });
-            const profileData = await profileResponse.json();
-            if (profileData.success) {
-              localStorage.setItem('token', profileData.token);
-              localStorage.setItem('userId', profileData.user.id);
-              localStorage.removeItem('tempToken');
-              localStorage.removeItem('isGuest');
-              window.location.href = 'rules.html';
-            } else {
-              errorDiv.innerText = profileData.message;
-            }
+      // ✅ CHECK: If user has profile OR user exists in DB
+      if (data.hasProfile === true || (data.userId && data.username)) {
+        // Existing user - get profile and go to topics
+        try {
+          const profileResponse = await fetch(`${BACKEND_URL}/auth/get-profile`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tempToken: data.tempToken })
+          });
+          const profileData = await profileResponse.json();
+          
+          if (profileData.success) {
+            localStorage.setItem('token', profileData.token);
+            localStorage.setItem('userId', profileData.user.id);
+            localStorage.removeItem('tempToken');
+            
+            const userProfile = {
+              name: profileData.user.username,
+              avatar: profileData.user.profilePic || '😎',
+              email: email,
+              isGuest: false,
+              setupComplete: true
+            };
+            localStorage.setItem('userProfile', JSON.stringify(userProfile));
+            
+            window.location.href = 'topics.html';
           } else {
-            document.getElementById('step2').classList.remove('active');
-            document.getElementById('step3').classList.add('active');
+            errorDiv.innerText = profileData.message;
           }
-        } else {
-          errorDiv.innerText = data.message;
+        } catch (err) {
+          console.error('Get profile error:', err);
+          errorDiv.innerText = 'Error loading profile';
         }
-      } catch (err) {
-        console.error('Verify OTP error:', err);
-        errorDiv.innerText = 'Verification failed. Please try again.';
+      } else {
+        // New user - go to profile setup
+        window.location.href = `profile-setup.html?mode=auth&email=${encodeURIComponent(email)}&tempToken=${data.tempToken}`;
       }
+    } else {
+      errorDiv.innerText = data.message;
     }
-
-    async function completeProfile() {
-      const username = document.getElementById('username').value;
-      const errorDiv = document.getElementById('profileError');
-
-      if (!username) { errorDiv.innerText = 'Username required'; return; }
-
-      const tempToken = localStorage.getItem('tempToken');
-      if (!tempToken) { errorDiv.innerText = 'Session expired. Please login again.'; return; }
-
-      try {
-        const response = await fetch(`${BACKEND_URL}/auth/complete-profile-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tempToken, username, profilePic: selectedAvatar })
-        });
-        const data = await response.json();
-
-        if (data.success) {
-          localStorage.setItem('token', data.token);
-          localStorage.setItem('userId', data.user.id);
-          localStorage.removeItem('tempToken');
-          localStorage.removeItem('isGuest');
-          window.location.href = 'rules.html';
-        } else {
-          errorDiv.innerText = data.message;
-        }
-      } catch (err) {
-        console.error('Complete profile error:', err);
-        errorDiv.innerText = 'Server error. Please try again.';
-      }
-    }
+  } catch (err) {
+    console.error('Verify OTP error:', err);
+    errorDiv.innerText = 'Verification failed. Please try again.';
+  }
+}
 
     document.getElementById('sendOtpBtn').addEventListener('click', sendOTP);
     document.getElementById('verifyOtpBtn').addEventListener('click', verifyOTP);
-    document.getElementById('completeProfileBtn').addEventListener('click', completeProfile);
+    document.getElementById('backToEmail').addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('step2').classList.remove('active');
+      document.getElementById('step1').classList.add('active');
+      document.getElementById('otpCode').value = '';
+    });
 
     document.getElementById('email').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendOTP(); });
     document.getElementById('otpCode').addEventListener('keypress', (e) => { if (e.key === 'Enter') verifyOTP(); });

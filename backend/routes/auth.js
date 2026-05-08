@@ -22,8 +22,13 @@ router.post('/send-email-otp', async (req, res) => {
 });
 
 // Verify email OTP
+// Verify email OTP - UPDATED
 router.post('/verify-email-otp', async (req, res) => {
   const { email, otpCode } = req.body;
+  
+  if (!email || !otpCode) {
+    return res.json({ success: false, message: 'Email and OTP required' });
+  }
   
   const result = emailOTPService.verifyOTP(email, otpCode);
   
@@ -31,8 +36,28 @@ router.post('/verify-email-otp', async (req, res) => {
     // Check if user already exists in database
     let user = await User.findOne({ email });
     
-    // Check if user has complete profile (username not auto-generated)
-    const hasProfile = user && user.username && !user.username.startsWith('user_');
+    // ✅ FIX: Check if user has a valid profile
+    // A user has a profile if:
+    // 1. User exists in database
+    // 2. Username is not null/empty
+    // 3. User is not a guest (or has proper username)
+    let hasProfile = false;
+    if (user) {
+      // User exists in DB - check if they have a proper username
+      if (user.username && 
+          user.username !== 'Explorer' && 
+          !user.username.startsWith('user_') &&
+          user.username.length > 0) {
+        hasProfile = true;
+      }
+      
+      // Also check if user has completed email verification
+      if (user.isVerified === true) {
+        hasProfile = true;
+      }
+    }
+    
+    console.log(`📧 User check: ${email} | exists: ${!!user} | hasProfile: ${hasProfile} | username: ${user?.username}`);
     
     // Create temp token
     const tempToken = jwt.sign(
@@ -40,7 +65,7 @@ router.post('/verify-email-otp', async (req, res) => {
         email, 
         otpVerified: true,
         userId: user?._id || null,
-        hasProfile: hasProfile || false  // ✅ Ensure boolean, not null
+        hasProfile: hasProfile
       },
       process.env.JWT_SECRET,
       { expiresIn: '15m' }
@@ -49,8 +74,9 @@ router.post('/verify-email-otp', async (req, res) => {
     res.json({ 
       success: true, 
       tempToken,
-      hasProfile: hasProfile || false,  // ✅ Ensure boolean
+      hasProfile: hasProfile,
       username: user?.username || '',
+      profilePic: user?.profilePic || '😎',
       email: email
     });
   } else {
@@ -58,51 +84,119 @@ router.post('/verify-email-otp', async (req, res) => {
   }
 });
 
-// Complete profile with email
-router.post('/complete-profile-email', async (req, res) => {
-  const { tempToken, username, profilePic } = req.body;
+// ============================================
+// GET USER PROFILE BY TEMP TOKEN (For existing users)
+// ============================================
+router.post('/get-profile', async (req, res) => {
+  const { tempToken } = req.body;
+  
+  if (!tempToken) {
+    return res.json({ success: false, message: 'Temp token required' });
+  }
   
   try {
     const decoded = jwt.verify(tempToken, process.env.JWT_SECRET);
-    const { email, userId, hasProfile } = decoded;
+    const { email, userId } = decoded;
+    
+    let user;
+    if (userId) {
+      user = await User.findById(userId);
+    } else if (email) {
+      user = await User.findOne({ email });
+    }
+    
+    if (!user) {
+      return res.json({ success: false, message: 'User not found' });
+    }
+    
+    // Generate final auth token
+    const finalToken = jwt.sign(
+      { userId: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+    
+    res.json({
+      success: true,
+      token: finalToken,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        profilePic: user.profilePic || '😎',
+        isGuest: user.isGuest || false,
+        matchesCount: user.matchesCount || 0
+      }
+    });
+  } catch (err) {
+    console.error('Get profile error:', err);
+    if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+      res.json({ success: false, message: 'Session expired. Please login again.' });
+    } else {
+      res.json({ success: false, message: 'Error loading profile' });
+    }
+  }
+});
+
+// Complete profile with email (for new auth users)
+// Complete profile with email - UPDATED
+router.post('/complete-profile-email', async (req, res) => {
+  const { tempToken, username, profilePic } = req.body;
+  
+  if (!tempToken || !username) {
+    return res.json({ success: false, message: 'Temp token and username required' });
+  }
+  
+  try {
+    const decoded = jwt.verify(tempToken, process.env.JWT_SECRET);
+    const { email, userId } = decoded;
+    
+    if (!email) {
+      return res.json({ success: false, message: 'Email not found in session' });
+    }
     
     let user;
     
-    if (userId && hasProfile) {
-      // Existing user - just generate token
-      user = await User.findById(userId);
-      if (!user) {
-        return res.json({ success: false, message: 'User not found' });
-      }
-    } else {
-      // New user - create or update
-      user = await User.findOne({ email });
+    // ✅ FIX: First check if user already exists by email
+    user = await User.findOne({ email });
+    
+    if (user) {
+      // User exists - just update the profile
+      console.log(`📝 Updating existing user: ${email}`);
       
-      if (!user) {
-        // ✅ Check if username already exists
-        const existingUser = await User.findOne({ username });
-        if (existingUser) {
-          return res.json({ success: false, message: 'Username already taken. Please choose another.' });
-        }
-        
-        user = new User({
-          username,
-          email,
-          profilePic: profilePic || '😀',
-          isVerified: true
-        });
-      } else {
-        // ✅ Check if username already exists (for update)
-        if (user.username !== username) {
-          const existingUser = await User.findOne({ username });
-          if (existingUser) {
-            return res.json({ success: false, message: 'Username already taken. Please choose another.' });
-          }
-        }
-        user.username = username;
-        user.profilePic = profilePic || user.profilePic;
-        user.isVerified = true;
+      // Check if username already taken by ANOTHER user
+      const existingUserWithSameName = await User.findOne({ 
+        username: username,
+        _id: { $ne: user._id }  // Not the same user
+      });
+      
+      if (existingUserWithSameName) {
+        return res.json({ success: false, message: 'Username already taken. Please choose another.' });
       }
+      
+      user.username = username;
+      user.profilePic = profilePic || user.profilePic || '😎';
+      user.isVerified = true;
+      user.isGuest = false;
+      await user.save();
+    } else {
+      // New user - create
+      console.log(`📝 Creating new user: ${email}`);
+      
+      // Check if username already exists
+      const existingUser = await User.findOne({ username });
+      if (existingUser) {
+        return res.json({ success: false, message: 'Username already taken. Please choose another.' });
+      }
+      
+      user = new User({
+        username,
+        email,
+        profilePic: profilePic || '😎',
+        isVerified: true,
+        isGuest: false,
+        status: 'active'
+      });
       
       await user.save();
     }
@@ -131,13 +225,201 @@ router.post('/complete-profile-email', async (req, res) => {
     } else if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
       res.json({ success: false, message: 'Session expired. Please login again.' });
     } else {
-      res.json({ success: false, message: 'Session expired. Please login again.' });
+      res.json({ success: false, message: 'Error creating profile. Please try again.' });
     }
   }
 });
 
 // ============================================
-// PHONE OTP ROUTES (Legacy)
+// GUEST PROFILE ROUTES (IP based tracking)
+// ============================================
+
+// GET guest profile by IP
+router.get('/api/guest/profile', async (req, res) => {
+  let ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || '127.0.0.1';
+  if (ipAddress.startsWith('::ffff:')) ipAddress = ipAddress.substring(7);
+  if (ipAddress === '::1') ipAddress = '127.0.0.1';
+  
+  try {
+    // Find guest by IP address
+    let guest = await User.findOne({ 
+      guestIpAddress: ipAddress,
+      isGuest: true 
+    });
+    
+    if (guest) {
+      res.json({
+        success: true,
+        name: guest.username,
+        avatar: guest.profilePic || '😎',
+        email: guest.email || null,
+        matchCount: guest.matchesCount || 0
+      });
+    } else {
+      res.json({
+        success: true,
+        name: null,
+        avatar: null,
+        email: null,
+        matchCount: 0
+      });
+    }
+  } catch (error) {
+    console.error('Get guest profile error:', error);
+    res.json({ success: false, name: null, avatar: null });
+  }
+});
+
+// POST save/update guest profile (IP based)
+router.post('/api/guest/track', async (req, res) => {
+  let ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || '127.0.0.1';
+  if (ipAddress.startsWith('::ffff:')) ipAddress = ipAddress.substring(7);
+  if (ipAddress === '::1') ipAddress = '127.0.0.1';
+  
+  const { name, avatar, email } = req.body;
+  
+  try {
+    let guest = await User.findOne({ 
+      guestIpAddress: ipAddress,
+      isGuest: true 
+    });
+    
+    if (guest) {
+      // Update existing guest
+      guest.username = name || guest.username;
+      guest.profilePic = avatar || guest.profilePic;
+      if (email && !guest.email) {
+        guest.email = email;
+      }
+      guest.lastActiveAt = new Date();
+      await guest.save();
+    } else {
+      // Create new guest
+      guest = new User({
+        username: name || 'Explorer',
+        profilePic: avatar || '😎',
+        email: email || null,
+        isGuest: true,
+        guestIpAddress: ipAddress,
+        isVerified: false,
+        status: 'active',
+        guestSessionStart: new Date()
+      });
+      await guest.save();
+    }
+    
+    res.json({ 
+      success: true, 
+      guest: {
+        id: guest._id,
+        name: guest.username,
+        avatar: guest.profilePic,
+        email: guest.email
+      }
+    });
+  } catch (error) {
+    console.error('Save guest profile error:', error);
+    res.json({ success: false, message: 'Error saving profile' });
+  }
+});
+
+// GET guest match count
+router.get('/api/guest/matches', async (req, res) => {
+  let ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || '127.0.0.1';
+  if (ipAddress.startsWith('::ffff:')) ipAddress = ipAddress.substring(7);
+  if (ipAddress === '::1') ipAddress = '127.0.0.1';
+  
+  try {
+    let guest = await User.findOne({ 
+      guestIpAddress: ipAddress,
+      isGuest: true 
+    });
+    
+    res.json({ 
+      success: true, 
+      count: guest?.matchesCount || 0 
+    });
+  } catch (error) {
+    res.json({ success: true, count: 0 });
+  }
+});
+
+// POST increment guest match count
+router.post('/api/guest/matches/increment', async (req, res) => {
+  let ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || '127.0.0.1';
+  if (ipAddress.startsWith('::ffff:')) ipAddress = ipAddress.substring(7);
+  if (ipAddress === '::1') ipAddress = '127.0.0.1';
+  
+  try {
+    let guest = await User.findOne({ 
+      guestIpAddress: ipAddress,
+      isGuest: true 
+    });
+    
+    if (guest) {
+      guest.matchesCount = (guest.matchesCount || 0) + 1;
+      await guest.save();
+      res.json({ success: true, count: guest.matchesCount });
+    } else {
+      res.json({ success: true, count: 0 });
+    }
+  } catch (error) {
+    res.json({ success: true, count: 0 });
+  }
+});
+
+// ============================================
+// AUTH USER MATCH COUNT ROUTES
+// ============================================
+
+// GET auth user match count
+router.get('/api/user/matches/count', async (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  
+  if (!token) {
+    return res.json({ success: false, count: 0 });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.userId);
+    
+    res.json({ 
+      success: true, 
+      count: user?.matchesCount || 0 
+    });
+  } catch (error) {
+    res.json({ success: false, count: 0 });
+  }
+});
+
+// POST increment auth user match count
+router.post('/api/user/matches/increment', async (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  
+  if (!token) {
+    return res.json({ success: false });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findByIdAndUpdate(
+      decoded.userId,
+      { $inc: { matchesCount: 1 } },
+      { new: true }
+    );
+    
+    res.json({ 
+      success: true, 
+      count: user?.matchesCount || 0 
+    });
+  } catch (error) {
+    res.json({ success: false });
+  }
+});
+
+// ============================================
+// PHONE OTP ROUTES (Legacy - Keep for existing users)
 // ============================================
 
 router.post('/send-otp', async (req, res) => {
@@ -194,7 +476,13 @@ router.post('/firebase-verify', async (req, res) => {
   let user = await User.findOne({ phoneNumber });
   let isNewUser = false;
   if (!user) {
-    user = new User({ phoneNumber, username: `user_${Date.now()}`, email: `${phoneNumber}@temp.user`, isVerified: true, firebaseUid: uid });
+    user = new User({ 
+      phoneNumber, 
+      username: `user_${Date.now()}`, 
+      email: `${phoneNumber}@temp.user`, 
+      isVerified: true, 
+      firebaseUid: uid 
+    });
     await user.save();
     isNewUser = true;
   }
@@ -204,12 +492,13 @@ router.post('/firebase-verify', async (req, res) => {
 });
 
 // ============================================
-// GUEST MODE ROUTES
+// GUEST MODE ROUTES (Original - Keep)
 // ============================================
 
 router.post('/guest', async (req, res) => {
   let ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || '127.0.0.1';
   if (ipAddress.startsWith('::ffff:')) ipAddress = ipAddress.substring(7);
+  if (ipAddress === '::1') ipAddress = '127.0.0.1';
   console.log('Guest IP address:', ipAddress);
   const result = await authService.createGuestSession(ipAddress);
   res.json(result);

@@ -39,10 +39,10 @@ class EmailService {
 
     try {
       const result = await this.brevo.transactionalEmails.sendTransacEmail({
-        subject: '🔐 Your Login OTP - Live Connect',
+        subject: '🔐 Your Login OTP - Hellogen',
         htmlContent: this.getOTPHTML(otp),
         sender: {
-          name: 'Live Connect',
+          name: 'Hellogen',
           email: 'avishekdas478@gmail.com',  // ✅ Your verified Gmail as sender
         },
         to: [{ email }],
@@ -70,10 +70,10 @@ class EmailService {
 
     try {
       await this.brevo.transactionalEmails.sendTransacEmail({
-        subject: `⚠️ Account ${suspensionType} – Live Connect`,
+        subject: `⚠️ Account ${suspensionType} – Hellogen`,
         htmlContent: this.getViolationHTML(username, suspensionType, reason),
         sender: {
-          name: 'Live Connect',
+          name: 'Hellogen',
           email: 'avishekdas478@gmail.com',
         },
         to: [{ email, name: username }],
@@ -95,10 +95,10 @@ class EmailService {
 
     try {
       await this.brevo.transactionalEmails.sendTransacEmail({
-        subject: 'Welcome to Live Connect! 🎉',
+        subject: 'Welcome to Hellogen! 🎉',
         htmlContent: this.getWelcomeHTML(username),
         sender: {
-          name: 'Live Connect',
+          name: 'Hellogen',
           email: 'avishekdas478@gmail.com',
         },
         to: [{ email, name: username }],
@@ -120,7 +120,7 @@ class EmailService {
       <body style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
         <div style="max-width: 500px; margin: auto; background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
           <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px;">
-            <h2>🎥 Live Connect</h2>
+            <h2>🎥 Hellogen</h2>
           </div>
           <div style="padding: 40px 20px;">
             <h3>Your Login OTP</h3>
@@ -154,7 +154,7 @@ class EmailService {
             </div>
             <p>If you believe this is an error, please contact support.</p>
             <hr>
-            <p style="font-size: 12px; color: #666;">Live Connect – real conversations, real people.</p>
+            <p style="font-size: 12px; color: #666;">Hellogen – real conversations, real people.</p>
           </div>
         </div>
       </body>
@@ -170,7 +170,7 @@ class EmailService {
       <body style="font-family: Arial, sans-serif; padding: 20px;">
         <div style="max-width: 600px; margin: auto; background: #fff; border-radius: 20px; overflow: hidden;">
           <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center;">
-            <h2>🎉 Welcome to Live Connect!</h2>
+            <h2>🎉 Welcome to Hellogen!</h2>
           </div>
           <div style="padding: 20px;">
             <h3>Hi ${username},</h3>
@@ -181,7 +181,7 @@ class EmailService {
               <li>Start authentic conversations</li>
             </ul>
             <p>Stay respectful, stay safe, and enjoy!</p>
-            <p style="font-size: 12px; color: #666;">– The Live Connect team</p>
+            <p style="font-size: 12px; color: #666;">– The Hellogen team</p>
           </div>
         </div>
       </body>
