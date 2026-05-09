@@ -26,4 +26,5 @@ const ReportSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('Report', ReportSchema);
+// ✅ FIX: Check if model already exists before creating
+module.exports = mongoose.models.Report || mongoose.model('Report', ReportSchema);

@@ -13,6 +13,7 @@ const { connectRedis, disconnectRedis, isRedisReady } = require("./config/redis"
 const authRoutes = require("./routes/auth");
 const reportRoutes = require("./routes/report");
 const { handleSockets } = require("./sockets/matchmaking");
+const moderationRoutes = require('./routes/moderation');
 
 const app = express();
 
@@ -55,15 +56,16 @@ app.use(cors({
 
 // ⏱️ Rate limiting for auth routes
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: 'Too many requests from this IP, please try again later.'
 });
 app.use('/auth', authLimiter);
 
-// 🛣 Routes
+// 🛣 Routes - ORDER MATTERS! Put specific routes before generic ones
 app.use("/auth", authRoutes);
 app.use("/api/report", reportRoutes);
+app.use('/moderation', moderationRoutes);
 
 // 🩺 Health Check
 app.get("/", (req, res) => {

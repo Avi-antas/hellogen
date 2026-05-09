@@ -22,7 +22,6 @@ router.post('/send-email-otp', async (req, res) => {
 });
 
 // Verify email OTP
-// Verify email OTP - UPDATED
 router.post('/verify-email-otp', async (req, res) => {
   const { email, otpCode } = req.body;
   
@@ -33,17 +32,10 @@ router.post('/verify-email-otp', async (req, res) => {
   const result = emailOTPService.verifyOTP(email, otpCode);
   
   if (result.success) {
-    // Check if user already exists in database
     let user = await User.findOne({ email });
     
-    // ✅ FIX: Check if user has a valid profile
-    // A user has a profile if:
-    // 1. User exists in database
-    // 2. Username is not null/empty
-    // 3. User is not a guest (or has proper username)
     let hasProfile = false;
     if (user) {
-      // User exists in DB - check if they have a proper username
       if (user.username && 
           user.username !== 'Explorer' && 
           !user.username.startsWith('user_') &&
@@ -51,15 +43,13 @@ router.post('/verify-email-otp', async (req, res) => {
         hasProfile = true;
       }
       
-      // Also check if user has completed email verification
       if (user.isVerified === true) {
         hasProfile = true;
       }
     }
     
-    console.log(`📧 User check: ${email} | exists: ${!!user} | hasProfile: ${hasProfile} | username: ${user?.username}`);
+    console.log(`📧 User check: ${email} | exists: ${!!user} | hasProfile: ${hasProfile}`);
     
-    // Create temp token
     const tempToken = jwt.sign(
       { 
         email, 
@@ -85,7 +75,7 @@ router.post('/verify-email-otp', async (req, res) => {
 });
 
 // ============================================
-// GET USER PROFILE BY TEMP TOKEN (For existing users)
+// GET USER PROFILE BY TEMP TOKEN
 // ============================================
 router.post('/get-profile', async (req, res) => {
   const { tempToken } = req.body;
@@ -109,7 +99,6 @@ router.post('/get-profile', async (req, res) => {
       return res.json({ success: false, message: 'User not found' });
     }
     
-    // Generate final auth token
     const finalToken = jwt.sign(
       { userId: user._id, email: user.email },
       process.env.JWT_SECRET,
@@ -125,21 +114,19 @@ router.post('/get-profile', async (req, res) => {
         email: user.email,
         profilePic: user.profilePic || '😎',
         isGuest: user.isGuest || false,
-        matchesCount: user.matchesCount || 0
+        matchesCount: user.matchesCount || 0,
+        pinnedPartners: user.pinnedPartners || []
       }
     });
   } catch (err) {
     console.error('Get profile error:', err);
-    if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
-      res.json({ success: false, message: 'Session expired. Please login again.' });
-    } else {
-      res.json({ success: false, message: 'Error loading profile' });
-    }
+    res.json({ success: false, message: 'Session expired. Please login again.' });
   }
 });
 
-// Complete profile with email (for new auth users)
-// Complete profile with email - UPDATED
+// ============================================
+// COMPLETE PROFILE WITH EMAIL
+// ============================================
 router.post('/complete-profile-email', async (req, res) => {
   const { tempToken, username, profilePic } = req.body;
   
@@ -155,19 +142,14 @@ router.post('/complete-profile-email', async (req, res) => {
       return res.json({ success: false, message: 'Email not found in session' });
     }
     
-    let user;
-    
-    // ✅ FIX: First check if user already exists by email
-    user = await User.findOne({ email });
+    let user = await User.findOne({ email });
     
     if (user) {
-      // User exists - just update the profile
       console.log(`📝 Updating existing user: ${email}`);
       
-      // Check if username already taken by ANOTHER user
       const existingUserWithSameName = await User.findOne({ 
         username: username,
-        _id: { $ne: user._id }  // Not the same user
+        _id: { $ne: user._id }
       });
       
       if (existingUserWithSameName) {
@@ -180,10 +162,8 @@ router.post('/complete-profile-email', async (req, res) => {
       user.isGuest = false;
       await user.save();
     } else {
-      // New user - create
       console.log(`📝 Creating new user: ${email}`);
       
-      // Check if username already exists
       const existingUser = await User.findOne({ username });
       if (existingUser) {
         return res.json({ success: false, message: 'Username already taken. Please choose another.' });
@@ -201,7 +181,6 @@ router.post('/complete-profile-email', async (req, res) => {
       await user.save();
     }
     
-    // Generate final auth token
     const token = jwt.sign(
       { userId: user._id, email: user.email },
       process.env.JWT_SECRET,
@@ -222,26 +201,22 @@ router.post('/complete-profile-email', async (req, res) => {
     console.error('Complete profile error:', err);
     if (err.code === 11000) {
       res.json({ success: false, message: 'Username already taken. Please choose another.' });
-    } else if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
-      res.json({ success: false, message: 'Session expired. Please login again.' });
     } else {
-      res.json({ success: false, message: 'Error creating profile. Please try again.' });
+      res.json({ success: false, message: 'Session expired. Please login again.' });
     }
   }
 });
 
 // ============================================
-// GUEST PROFILE ROUTES (IP based tracking)
+// GUEST PROFILE ROUTES
 // ============================================
 
-// GET guest profile by IP
 router.get('/api/guest/profile', async (req, res) => {
   let ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || '127.0.0.1';
   if (ipAddress.startsWith('::ffff:')) ipAddress = ipAddress.substring(7);
   if (ipAddress === '::1') ipAddress = '127.0.0.1';
   
   try {
-    // Find guest by IP address
     let guest = await User.findOne({ 
       guestIpAddress: ipAddress,
       isGuest: true 
@@ -270,7 +245,6 @@ router.get('/api/guest/profile', async (req, res) => {
   }
 });
 
-// POST save/update guest profile (IP based)
 router.post('/api/guest/track', async (req, res) => {
   let ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || '127.0.0.1';
   if (ipAddress.startsWith('::ffff:')) ipAddress = ipAddress.substring(7);
@@ -285,7 +259,6 @@ router.post('/api/guest/track', async (req, res) => {
     });
     
     if (guest) {
-      // Update existing guest
       guest.username = name || guest.username;
       guest.profilePic = avatar || guest.profilePic;
       if (email && !guest.email) {
@@ -294,7 +267,6 @@ router.post('/api/guest/track', async (req, res) => {
       guest.lastActiveAt = new Date();
       await guest.save();
     } else {
-      // Create new guest
       guest = new User({
         username: name || 'Explorer',
         profilePic: avatar || '😎',
@@ -323,56 +295,10 @@ router.post('/api/guest/track', async (req, res) => {
   }
 });
 
-// GET guest match count
-router.get('/api/guest/matches', async (req, res) => {
-  let ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || '127.0.0.1';
-  if (ipAddress.startsWith('::ffff:')) ipAddress = ipAddress.substring(7);
-  if (ipAddress === '::1') ipAddress = '127.0.0.1';
-  
-  try {
-    let guest = await User.findOne({ 
-      guestIpAddress: ipAddress,
-      isGuest: true 
-    });
-    
-    res.json({ 
-      success: true, 
-      count: guest?.matchesCount || 0 
-    });
-  } catch (error) {
-    res.json({ success: true, count: 0 });
-  }
-});
-
-// POST increment guest match count
-router.post('/api/guest/matches/increment', async (req, res) => {
-  let ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || '127.0.0.1';
-  if (ipAddress.startsWith('::ffff:')) ipAddress = ipAddress.substring(7);
-  if (ipAddress === '::1') ipAddress = '127.0.0.1';
-  
-  try {
-    let guest = await User.findOne({ 
-      guestIpAddress: ipAddress,
-      isGuest: true 
-    });
-    
-    if (guest) {
-      guest.matchesCount = (guest.matchesCount || 0) + 1;
-      await guest.save();
-      res.json({ success: true, count: guest.matchesCount });
-    } else {
-      res.json({ success: true, count: 0 });
-    }
-  } catch (error) {
-    res.json({ success: true, count: 0 });
-  }
-});
-
 // ============================================
-// AUTH USER MATCH COUNT ROUTES
+// MATCH COUNT ROUTES
 // ============================================
 
-// GET auth user match count
 router.get('/api/user/matches/count', async (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
   
@@ -383,17 +309,12 @@ router.get('/api/user/matches/count', async (req, res) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.userId);
-    
-    res.json({ 
-      success: true, 
-      count: user?.matchesCount || 0 
-    });
+    res.json({ success: true, count: user?.matchesCount || 0 });
   } catch (error) {
     res.json({ success: false, count: 0 });
   }
 });
 
-// POST increment auth user match count
 router.post('/api/user/matches/increment', async (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
   
@@ -408,18 +329,146 @@ router.post('/api/user/matches/increment', async (req, res) => {
       { $inc: { matchesCount: 1 } },
       { new: true }
     );
-    
-    res.json({ 
-      success: true, 
-      count: user?.matchesCount || 0 
-    });
+    res.json({ success: true, count: user?.matchesCount || 0 });
   } catch (error) {
     res.json({ success: false });
   }
 });
 
 // ============================================
-// PHONE OTP ROUTES (Legacy - Keep for existing users)
+// PINNED PARTNERS ROUTES
+// ============================================
+
+// Get pinned partners list
+router.get('/pinned/list', async (req, res) => {
+  const authToken = req.headers.authorization?.split(' ')[1];
+  
+  if (!authToken) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+  
+  try {
+    const decoded = jwt.verify(authToken, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.userId);
+    
+    if (!user) {
+      return res.json({ success: false, message: 'User not found' });
+    }
+    
+    res.json({ 
+      success: true, 
+      pinnedPartners: user.pinnedPartners || [] 
+    });
+  } catch (error) {
+    console.error('Get pinned error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Add pinned partner
+router.post('/pinned/add', async (req, res) => {
+  const authToken = req.headers.authorization?.split(' ')[1];
+  
+  if (!authToken) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+  
+  try {
+    const decoded = jwt.verify(authToken, process.env.JWT_SECRET);
+    const { partnerId, partnerName, partnerAvatar, topic } = req.body;
+    
+    console.log('📌 Adding pinned partner:', { userId: decoded.userId, partnerId, partnerName });
+    
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      return res.json({ success: false, message: 'User not found' });
+    }
+    
+    // Initialize pinnedPartners array if it doesn't exist
+    if (!user.pinnedPartners) {
+      user.pinnedPartners = [];
+    }
+    
+    // Check if already pinned
+    const alreadyPinned = user.pinnedPartners.some(p => p.partnerId === partnerId);
+    if (alreadyPinned) {
+      return res.json({ success: false, message: 'Partner already pinned' });
+    }
+    
+    // Add to pinned partners (limit to 20)
+    user.pinnedPartners.unshift({
+      partnerId: partnerId,
+      name: partnerName,
+      avatar: partnerAvatar || '🦊',
+      topic: topic || 'General',
+      pinnedAt: new Date()
+    });
+    
+    // Keep only last 20
+    if (user.pinnedPartners.length > 20) {
+      user.pinnedPartners = user.pinnedPartners.slice(0, 20);
+    }
+    
+    await user.save();
+    
+    res.json({ 
+      success: true, 
+      message: 'Partner pinned successfully',
+      pinnedPartners: user.pinnedPartners 
+    });
+    
+  } catch (error) {
+    console.error('Add pinned error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Remove pinned partner
+router.post('/pinned/remove', async (req, res) => {
+  const authToken = req.headers.authorization?.split(' ')[1];
+  
+  if (!authToken) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+  
+  try {
+    const decoded = jwt.verify(authToken, process.env.JWT_SECRET);
+    const { partnerId } = req.body;
+    
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      return res.json({ success: false, message: 'User not found' });
+    }
+    
+    user.pinnedPartners = (user.pinnedPartners || []).filter(p => p.partnerId !== partnerId);
+    await user.save();
+    
+    res.json({ 
+      success: true, 
+      message: 'Partner unpinned',
+      pinnedPartners: user.pinnedPartners 
+    });
+    
+  } catch (error) {
+    console.error('Remove pinned error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// TEST ENDPOINTS (for debugging)
+// ============================================
+
+router.get('/test', (req, res) => {
+  res.json({ success: true, message: 'Auth routes are working!' });
+});
+
+router.get('/pinned/test', (req, res) => {
+  res.json({ success: true, message: 'Pinned routes are working!' });
+});
+
+// ============================================
+// LEGACY ROUTES (Keep for compatibility)
 // ============================================
 
 router.post('/send-otp', async (req, res) => {
@@ -467,10 +516,6 @@ router.post('/complete-profile', async (req, res) => {
   }
 });
 
-// ============================================
-// FIREBASE AUTH ROUTE
-// ============================================
-
 router.post('/firebase-verify', async (req, res) => {
   const { phoneNumber, uid } = req.body;
   let user = await User.findOne({ phoneNumber });
@@ -490,10 +535,6 @@ router.post('/firebase-verify', async (req, res) => {
   const tempToken = jwt.sign({ userId: user._id, phoneNumber, hasCompleteProfile }, process.env.JWT_SECRET, { expiresIn: '15m' });
   res.json({ success: true, tempToken, hasCompleteProfile, isNewUser, message: 'OTP verified' });
 });
-
-// ============================================
-// GUEST MODE ROUTES (Original - Keep)
-// ============================================
 
 router.post('/guest', async (req, res) => {
   let ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || '127.0.0.1';

@@ -5,6 +5,36 @@ const { handleAudioModeration } = require('./audioModeration');
 let waitingUsers = [];
 let activePairs = {};
 
+// ✅ ACTIVE USERS TRACKING (Global scope)
+let activeUsers = new Map(); // socketId -> { topic, userId, avatar, name }
+let topicUsers = new Map(); // topic -> Set of socketIds
+
+// ✅ Function to broadcast active users count to all clients
+function broadcastActiveUsers(io) {
+  const activeTopics = {};
+  
+  for (const [topic, users] of topicUsers) {
+    const userList = [];
+    for (const socketId of users) {
+      const user = activeUsers.get(socketId);
+      if (user) {
+        userList.push({
+          avatar: user.avatar || '😎',
+          name: user.name || 'User'
+        });
+      }
+    }
+    
+    activeTopics[topic] = {
+      count: userList.length,
+      users: userList.slice(0, 5).map(u => u.avatar)
+    };
+  }
+  
+  console.log('📊 Broadcasting active users:', activeTopics);
+  io.emit('active-users-update', { topics: activeTopics });
+}
+
 function handleSockets(io) {
   io.on("connection", (socket) => {
     console.log("🔥 Socket connected:", socket.id);
@@ -15,21 +45,63 @@ function handleSockets(io) {
     // Initialize audio moderation
     handleAudioModeration(io, socket);
 
+    // ✅ Handle get-active-users request
+    socket.on("get-active-users", () => {
+      const activeTopics = {};
+      
+      for (const [topic, users] of topicUsers) {
+        const userList = [];
+        for (const socketId of users) {
+          const user = activeUsers.get(socketId);
+          if (user) {
+            userList.push({
+              avatar: user.avatar || '😎',
+              name: user.name || 'User'
+            });
+          }
+        }
+        
+        activeTopics[topic] = {
+          count: userList.length,
+          users: userList.slice(0, 5).map(u => u.avatar)
+        };
+      }
+      
+      socket.emit('active-users-data', { topics: activeTopics });
+    });
+
     // 🎯 JOIN QUEUE with interest matching
     socket.on("joinQueue", async (user) => {
       console.log("📥 JOIN:", socket.id, user.interests);
 
-      // Extract topic (first interest) - NO profanity filter
       const topic = user.interests?.[0] || 'general';
       currentTopic = topic;
       currentUser = {
         socketId: socket.id,
         interests: user.interests || [],
         userId: user.userId,
-        avatar: user.avatar,
-        name: user.name,
+        avatar: user.avatar || '😎',
+        name: user.name || 'Explorer',
         timestamp: Date.now()
       };
+
+      // ✅ TRACK ACTIVE USER
+      activeUsers.set(socket.id, {
+        topic: topic,
+        userId: user.userId,
+        avatar: user.avatar || '😎',
+        name: user.name || 'Explorer',
+        timestamp: Date.now()
+      });
+      
+      // Add to topic users
+      if (!topicUsers.has(topic)) {
+        topicUsers.set(topic, new Set());
+      }
+      topicUsers.get(topic).add(socket.id);
+      
+      // ✅ Broadcast updated active users
+      broadcastActiveUsers(io);
 
       isInQueue = true;
 
@@ -37,41 +109,31 @@ function handleSockets(io) {
       if (process.env.USE_REDIS === 'true' && isRedisReady()) {
         await handleRedisMatching(socket, currentUser, io);
       } else {
-        // Use in-memory matching
         await handleInMemoryMatching(socket, currentUser, io);
       }
     });
 
-    // 🔁 NEXT BUTTON / SCROLL - User wants new partner
+    // 🔁 NEXT BUTTON / SCROLL
     socket.on("next", async () => {
       console.log(`🔄 User ${socket.id} requested next - finding new partner`);
-
-      // Set flag for graceful disconnect
       socket.gracefulNext = true;
 
-      // Check if currently matched
       const currentPartner = activePairs[socket.id];
 
       if (currentPartner) {
-        // ⭐ CRITICAL FIX: Notify partner to clean up immediately
         io.to(currentPartner).emit("partner-disconnected");
         console.log(`📢 Sent partner-disconnected to ${currentPartner}`);
-
-        // Remove from active pairs
         delete activePairs[currentPartner];
         delete activePairs[socket.id];
       }
 
-      // Remove user from queue if they were waiting
       removeFromQueue(socket.id);
 
-      // Rejoin queue after a short delay to ensure cleanup
       setTimeout(() => {
         if (socket.connected && currentTopic) {
           console.log(`🔄 User ${socket.id} rejoining queue with topic: ${currentTopic}`);
           socket.emit("rejoin-queue");
           
-          // Actually rejoin the queue
           if (process.env.USE_REDIS === 'true' && isRedisReady()) {
             handleRedisMatching(socket, currentUser, io);
           } else {
@@ -81,57 +143,55 @@ function handleSockets(io) {
       }, 300);
     });
 
-    // Rejoin queue handler
     socket.on("rejoin-queue", () => {
       console.log(`User ${socket.id} rejoining queue`);
       isInQueue = true;
     });
 
-    // OFFER handler
     socket.on("offer", ({ to, offer }) => {
       console.log(`📤 Offer from ${socket.id} to ${to}`);
-      io.to(to).emit("offer", { offer, from: socket.id });
+      io.to(to).emit("offer", { offer, from: socket.id, partnerInfo: { avatar: currentUser?.avatar || '😎', name: currentUser?.name || 'User' } });
     });
 
-    // ANSWER handler
     socket.on("answer", ({ to, answer }) => {
       console.log(`📥 Answer from ${socket.id} to ${to}`);
       io.to(to).emit("answer", { answer });
     });
 
-    // ICE candidate handler
     socket.on("ice-candidate", ({ to, candidate }) => {
       console.log(`❄️ ICE candidate from ${socket.id} to ${to}`);
       io.to(to).emit("ice-candidate", { candidate, from: socket.id });
     });
 
-    // DISCONNECT handler
     socket.on("disconnect", () => {
       console.log("❌ Disconnected:", socket.id);
 
-      // Remove from queue
+      // ✅ Remove from active users
+      if (activeUsers.has(socket.id)) {
+        const user = activeUsers.get(socket.id);
+        const topic = user.topic;
+        
+        activeUsers.delete(socket.id);
+        
+        if (topic && topicUsers.has(topic)) {
+          topicUsers.get(topic).delete(socket.id);
+          if (topicUsers.get(topic).size === 0) {
+            topicUsers.delete(topic);
+          }
+        }
+        
+        // ✅ Broadcast updated active users
+        broadcastActiveUsers(io);
+      }
+
       removeFromQueue(socket.id);
       isInQueue = false;
 
-      // Notify partner if exists
       if (activePairs[socket.id]) {
         const partner = activePairs[socket.id];
-
-        if (socket.gracefulNext) {
-          io.to(partner).emit("partner-left-waiting");
-          console.log(`📢 Sent partner-left-waiting to ${partner}`);
-        } else {
-          io.to(partner).emit("partner-disconnected");
-          console.log(`📢 Sent partner-disconnected to ${partner}`);
-        }
-
+        io.to(partner).emit("partner-disconnected");
         delete activePairs[partner];
         delete activePairs[socket.id];
-      }
-
-      // Clean up any Redis queue entries
-      if (process.env.USE_REDIS === 'true' && isRedisReady()) {
-        cleanupRedisQueue(socket.id);
       }
     });
   });
@@ -141,6 +201,7 @@ function handleSockets(io) {
 // CLEANUP REDIS QUEUE
 // ============================================
 async function cleanupRedisQueue(socketId) {
+  if (!isRedisReady()) return;
   const redis = getRedis();
   const keys = await redis.keys('queue:*');
   
@@ -160,38 +221,35 @@ async function cleanupRedisQueue(socketId) {
 // REDIS MATCHING WITH INTERESTS
 // ============================================
 async function handleRedisMatching(socket, user, io) {
+  if (!isRedisReady()) {
+    return handleInMemoryMatching(socket, user, io);
+  }
+  
   const redis = getRedis();
   const topic = user.interests[0] || 'general';
   const queueKey = `queue:${topic}`;
 
-  // Check if someone is waiting in this exact topic
   let partner = await redis.lPop(queueKey);
 
   if (partner) {
     partner = JSON.parse(partner);
-
-    // Calculate interest match score
     const matchScore = calculateMatchScore(user.interests, partner.interests);
     console.log(`Match score for ${topic}: ${matchScore}%`);
 
     if (matchScore >= 60) {
-      // Good match! Connect them
       await connectUsers(io, socket.id, partner.socketId, topic, matchScore, user, partner);
       return;
     } else {
-      // Low score, put partner back and try fallback
       await redis.rPush(queueKey, JSON.stringify(partner));
     }
   }
 
-  // Try fallback to cluster matching
   const clusterMatch = await findClusterMatch(redis, user, topic);
   if (clusterMatch) {
     await connectUsers(io, socket.id, clusterMatch, topic, 65, user);
     return;
   }
 
-  // No match found, add to queue
   await redis.rPush(queueKey, JSON.stringify({
     socketId: socket.id,
     interests: user.interests,
@@ -201,10 +259,8 @@ async function handleRedisMatching(socket, user, io) {
     timestamp: Date.now()
   }));
 
-  // Send waiting status
   socket.emit("waiting-status", { queueLength: await redis.lLen(queueKey) });
 
-  // Set timeout to prevent infinite waiting
   setTimeout(async () => {
     const queueLength = await redis.lLen(queueKey);
     if (queueLength > 1) {
@@ -221,14 +277,17 @@ async function handleRedisMatching(socket, user, io) {
 // IN-MEMORY MATCHING WITH INTERESTS
 // ============================================
 async function handleInMemoryMatching(socket, user, io) {
-  // Remove existing entry
   waitingUsers = waitingUsers.filter(u => u.socketId !== socket.id);
 
-  // Try to find a match with interest similarity
   let bestMatch = null;
   let bestScore = 0;
 
   for (const waiting of waitingUsers) {
+    // Skip matching with self
+    if (waiting.userId === user.userId && waiting.userId) {
+      continue;
+    }
+    
     const score = calculateMatchScore(user.interests, waiting.interests);
     if (score >= 60 && score > bestScore) {
       bestScore = score;
@@ -236,37 +295,21 @@ async function handleInMemoryMatching(socket, user, io) {
     }
   }
 
-if (bestMatch) {
-  waitingUsers = waitingUsers.filter(u => u.socketId !== bestMatch.socketId);
-  console.log(`✅ MATCH with ${bestScore}% interest match: ${user.socketId} <-> ${bestMatch.socketId}`);
-  connectUsers(io, socket.id, bestMatch.socketId, user.interests[0], bestScore, user, bestMatch);
-} else {
-    // No match, add to queue
+  if (bestMatch) {
+    waitingUsers = waitingUsers.filter(u => u.socketId !== bestMatch.socketId);
+    console.log(`✅ MATCH with ${bestScore}% interest match: ${user.socketId} <-> ${bestMatch.socketId}`);
+    connectUsers(io, socket.id, bestMatch.socketId, user.interests[0], bestScore, user, bestMatch);
+  } else {
     waitingUsers.push({
       socketId: socket.id,
       interests: user.interests,
       userId: user.userId,
-      avatar: user.avatar,
-      name: user.name,
+      avatar: user.avatar || '😎',
+      name: user.name || 'Explorer',
       timestamp: Date.now()
     });
     console.log(`Added to queue. Queue size: ${waitingUsers.length}`);
-
-    // Send waiting status
     socket.emit("waiting-status", { queueLength: waitingUsers.length });
-
-    // Timeout for fallback
-    setTimeout(() => {
-      const stillWaiting = waitingUsers.find(u => u.socketId === socket.id);
-      if (stillWaiting && waitingUsers.length > 1) {
-        const fallback = waitingUsers.find(u => u.socketId !== socket.id);
-        if (fallback) {
-          waitingUsers = waitingUsers.filter(u => u.socketId !== fallback.socketId && u.socketId !== socket.id);
-          console.log(`Fallback match: ${socket.id} <-> ${fallback.socketId}`);
-          connectUsers(io, socket.id, fallback.socketId, 'general', 50, user, fallback);
-        }
-      }
-    }, 15000);
   }
 }
 
@@ -292,7 +335,6 @@ function calculateMatchScore(interests1, interests2) {
 }
 
 function calculateInterestSimilarity(interest1, interest2) {
-  // Handle null/undefined values
   if (!interest1 || !interest2) return 0;
   
   const i1 = interest1.toLowerCase().trim();
@@ -324,7 +366,7 @@ function calculateInterestSimilarity(interest1, interest2) {
 }
 
 // ============================================
-// CLUSTER MATCHING (Fallback)
+// CLUSTER MATCHING
 // ============================================
 async function findClusterMatch(redis, user, originalTopic) {
   const relatedTopics = {
@@ -368,26 +410,22 @@ async function findAnyMatch(redis, excludeSocketId) {
 async function connectUsers(io, socketId1, socketId2, topic, matchScore, user1, user2) {
   console.log(`✅ CONNECTING: ${socketId1} <-> ${socketId2} (Match: ${matchScore}%)`);
 
-  // Store active pairs
   activePairs[socketId1] = socketId2;
   activePairs[socketId2] = socketId1;
 
-  // Get user profiles (from the user objects passed in)
   const user1Data = user1 || { avatar: '😎', name: 'You' };
   const user2Data = user2 || { avatar: '🦊', name: 'Partner' };
 
-  // Notify both users with partner info
   io.to(socketId1).emit("matched", socketId2, topic, {
-    avatar: user2Data.avatar || '🦊',
-    name: user2Data.name || 'Partner'
+    avatar: user2Data.avatar,
+    name: user2Data.name
   });
   
   io.to(socketId2).emit("matched", socketId1, topic, {
-    avatar: user1Data.avatar || '😎',
-    name: user1Data.name || 'You'
+    avatar: user1Data.avatar,
+    name: user1Data.name
   });
 
-  // Send match quality score
   io.to(socketId1).emit("match-quality", matchScore);
   io.to(socketId2).emit("match-quality", matchScore);
 }
@@ -397,6 +435,21 @@ async function connectUsers(io, socketId1, socketId2, topic, matchScore, user1, 
 // ============================================
 function removeFromQueue(socketId) {
   waitingUsers = waitingUsers.filter(u => u.socketId !== socketId);
+  
+  // ✅ Also remove from active users if not already removed
+  if (activeUsers.has(socketId)) {
+    const user = activeUsers.get(socketId);
+    const topic = user.topic;
+    
+    activeUsers.delete(socketId);
+    
+    if (topic && topicUsers.has(topic)) {
+      topicUsers.get(topic).delete(socketId);
+      if (topicUsers.get(topic).size === 0) {
+        topicUsers.delete(topic);
+      }
+    }
+  }
 }
 
 module.exports = { handleSockets };

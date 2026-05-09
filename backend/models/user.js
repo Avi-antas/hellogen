@@ -9,6 +9,17 @@ const UserSchema = new mongoose.Schema({
   otpCode: { type: String },
   otpExpires: { type: Date },
   
+  // ✅ NEW: Pinned partners
+  pinnedPartners: [{
+    partnerId: { type: String, required: true },  // socketId or userId
+    name: { type: String, required: true },
+    avatar: { type: String, default: '😎' },
+    topic: { type: String },
+    pinnedAt: { type: Date, default: Date.now },
+    lastSeen: { type: Date },
+    chatCount: { type: Number, default: 0 }
+  }],
+  
   // Moderation system
   status: {
     type: String,
