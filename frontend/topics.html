@@ -24,9 +24,52 @@
       right: 0;
       padding: 16px 24px;
       display: flex;
-      justify-content: flex-end;
+      justify-content: space-between;
       z-index: 100;
       background: linear-gradient(to bottom, rgba(10,10,10,0.8), transparent);
+    }
+    
+    .logo {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      cursor: pointer;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background-size: 200% 200%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: liquidFlow 3s ease infinite;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+    
+    .logo:hover {
+      transform: scale(1.02);
+    }
+    
+    @keyframes liquidFlow {
+      0% { background-position: 0% 50%; background-size: 200% 200%; }
+      25% { background-position: 50% 50%; }
+      50% { background-position: 100% 50%; }
+      75% { background-position: 50% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    
+    .logo::after {
+      content: '';
+      position: absolute;
+      bottom: -5px;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #667eea, #764ba2, transparent);
+      transform: scaleX(0);
+      transition: transform 0.3s ease;
+    }
+    
+    .logo:hover::after {
+      transform: scaleX(1);
     }
     
     .profile-badge {
@@ -89,7 +132,6 @@
     }
     
     .email-banner p { color: white; font-size: 13px; font-weight: 500; }
-    
     .email-banner button {
       background: white;
       border: none;
@@ -103,7 +145,6 @@
     }
     
     .email-banner button:hover { transform: scale(1.02); }
-    
     .email-banner .close-banner {
       background: transparent;
       color: white;
@@ -157,6 +198,59 @@
     
     .topic-emoji { font-size: 40px; display: block; margin-bottom: 10px; }
     .topic-name { font-size: 16px; font-weight: 600; color: white; }
+    
+    /* Active Users Section - No skeleton */
+    .topic-users {
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      flex-wrap: wrap;
+      min-height: 40px;
+    }
+    
+    .user-avatars {
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+    
+    .user-avatar-small {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      border: 2px solid #141414;
+      margin-left: -8px;
+      transition: all 0.2s ease;
+    }
+    
+    .user-avatar-small:first-child { margin-left: 0; }
+    .user-avatar-small:hover { transform: translateY(-3px); z-index: 10; }
+    
+    .user-count {
+      font-size: 12px;
+      color: #a3a3a3;
+      margin-left: 8px;
+      font-weight: 500;
+      background: rgba(102, 126, 234, 0.15);
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+    
+    /* No active users placeholder */
+    .no-active-users {
+      font-size: 11px;
+      color: #4a4a4a;
+      background: rgba(255,255,255,0.05);
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
     
     .custom-topic {
       background: #141414;
@@ -255,7 +349,6 @@
     }
     
     .edit-modal.active { display: flex; animation: modalFade 0.3s ease; }
-    
     @keyframes modalFade { from { opacity: 0; } to { opacity: 1; } }
     
     .edit-modal-content {
@@ -268,7 +361,6 @@
     }
     
     .edit-modal-content h3 { color: white; font-size: 24px; font-weight: 600; margin-bottom: 24px; }
-    
     .edit-avatar-section { text-align: center; margin-bottom: 24px; }
     
     .edit-avatar-circle {
@@ -299,7 +391,6 @@
     }
     
     .edit-emoji-picker.show { display: grid; }
-    
     .edit-emoji-option {
       font-size: 24px;
       padding: 6px;
@@ -350,24 +441,112 @@
       font-family: 'Krub', sans-serif;
     }
     
+    #greetingHeading { font-size: 3rem; font-weight: 400; }
+    
+    /* Pinned Section */
+    .pinned-section {
+      margin-bottom: 30px;
+      background: #0d0d0d;
+      border-radius: 24px;
+      padding: 20px;
+      border: 1px solid #222;
+    }
+    
+    .pinned-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    
+    .pinned-header h3 { color: white; font-size: 18px; font-weight: 600; }
+    .pinned-count {
+      background: rgba(243, 156, 18, 0.2);
+      color: #f39c12;
+      padding: 2px 10px;
+      border-radius: 50px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .pinned-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 15px;
+    }
+    
+    .pinned-card {
+      background: #141414;
+      border-radius: 16px;
+      padding: 15px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: 1px solid #222;
+      position: relative;
+    }
+    
+    .pinned-card:hover {
+      transform: translateY(-3px);
+      border-color: #f39c12;
+      background: #1a1a1a;
+    }
+    
+    .pinned-avatar {
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, #f39c12, #e67e22);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      margin: 0 auto 10px;
+    }
+    
+    .pinned-name { font-weight: 600; font-size: 14px; color: white; margin-bottom: 4px; }
+    .pinned-topic { font-size: 11px; color: #a3a3a3; margin-bottom: 8px; }
+    .pinned-date { font-size: 10px; color: #6b6b6b; }
+    
+    .unpin-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(255, 71, 87, 0.8);
+      border: none;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      font-size: 12px;
+      cursor: pointer;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    
+    .unpin-btn:hover { background: #ff4757; transform: scale(1.1); }
+    .empty-pinned { text-align: center; color: #6b6b6b; padding: 30px; font-size: 14px; }
+    
     @media (max-width: 768px) {
       .topics-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px; }
       .topic-card { padding: 15px 10px; }
       .topic-emoji { font-size: 30px; }
-      .container { padding-top: 100px; }
+      .container { padding-top: 90px; }
+      #greetingHeading { font-size: 2rem; }
     }
   </style>
 </head>
 <body>
-  <!-- Header with Profile Badge -->
   <div class="header">
+    <div class="logo">hellogen.</div>
     <div class="profile-badge" id="profileBadge">
       <div class="profile-avatar" id="profileAvatar">😎</div>
       <span class="profile-name" id="profileName">Explorer</span>
     </div>
   </div>
 
-  <!-- Email Banner -->
   <div class="email-banner" id="emailBanner">
     <p>✨ Add your email to save progress & get better matches!</p>
     <button id="addEmailBtn">Add Email</button>
@@ -375,11 +554,19 @@
   </div>
 
   <div class="container">
-    <h2>🎯 Select Your Interest</h2>
-    <p class="subtitle">Choose a topic or create your own</p>
+    <h2 id="greetingHeading">🎯 Select Your Interest</h2>
+    <p id="greetingSubtitle" class="subtitle">Choose a topic or create your own</p>
     
     <div class="match-count-badge">
       <span id="matchCountDisplay">✨ 0 matches completed</span>
+    </div>
+
+    <div class="pinned-section" id="pinnedSection" style="display: none;">
+      <div class="pinned-header">
+        <h3>📌 Pinned Partners</h3>
+        <span class="pinned-count" id="pinnedCount">0</span>
+      </div>
+      <div class="pinned-grid" id="pinnedGrid"></div>
     </div>
 
     <div class="topics-grid" id="topicsGrid"></div>
@@ -398,7 +585,6 @@
     </div>
   </div>
 
-  <!-- Edit Profile Modal -->
   <div class="edit-modal" id="editModal">
     <div class="edit-modal-content">
       <h3>Edit Profile</h3>
@@ -424,6 +610,7 @@
     </div>
   </div>
 
+  <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
   <script>
     const BACKEND_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
       ? 'http://localhost:5000'
@@ -433,7 +620,7 @@
     if (!token) window.location.href = 'index.html';
 
     // ============================================
-    // COMPREHENSIVE PROFANITY LIST (Same as backend)
+    // PROFANITY LIST
     // ============================================
     const offensiveWords = [
       'fuck', 'shit', 'asshole', 'bitch', 'cunt', 'dick', 'pussy', 'cock', 
@@ -457,7 +644,6 @@
       'breasts', 'nipple', 'anal', 'oral', 'cum', 'semen', 'masturbate'
     ];
 
-    // Popular topics
     const topics = [
       { emoji: "💻", name: "Coding", value: "coding" },
       { emoji: "🏏", name: "Cricket", value: "cricket" },
@@ -474,7 +660,7 @@
     ];
 
     // ============================================
-    // USER PROFILE MANAGEMENT
+    // USER PROFILE
     // ============================================
     const isGuest = localStorage.getItem('isGuest') === 'true';
     let userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
@@ -483,33 +669,192 @@
     let currentName = userProfile.name || 'Explorer';
     let currentEmail = userProfile.email || null;
 
-    // Update UI with profile
     document.getElementById('profileAvatar').textContent = currentAvatar;
     document.getElementById('profileName').textContent = currentName;
     document.getElementById('matchCountDisplay').innerHTML = `✨ ${matchCount} ${matchCount === 1 ? 'match' : 'matches'} completed`;
 
+    // Greeting
+    const greetingHeading = document.getElementById('greetingHeading');
+    const greetingSubtitle = document.getElementById('greetingSubtitle');
+
+    if (matchCount >= 1) {
+      greetingHeading.innerHTML = `👋 Welcome back, ${currentName}!`;
+      greetingSubtitle.innerHTML = `You've completed ${matchCount} ${matchCount === 1 ? 'match' : 'matches'}. Ready for more?`;
+    } else {
+      greetingHeading.innerHTML = `✨ Hey ${currentName}, Welcome to Hellogen! ✨`;
+      greetingSubtitle.innerHTML = `Select a topic that matches your vibe and start connecting`;
+    }
+
     // ============================================
-    // MATCH COUNT & EMAIL BANNER
+    // RENDER TOPICS (without skeleton loaders)
     // ============================================
-    function checkAndShowEmailBanner() {
-      const banner = document.getElementById('emailBanner');
-      const hasEmail = currentEmail && currentEmail.length > 0;
+    const grid = document.getElementById('topicsGrid');
+    
+    topics.forEach(topic => {
+      const card = document.createElement('div');
+      card.className = 'topic-card';
+      card.onclick = () => selectTopic(topic.value, topic.name);
+      card.innerHTML = `
+        <span class="topic-emoji">${topic.emoji}</span>
+        <div class="topic-name">${topic.name}</div>
+        <div class="topic-users" id="topic-users-${topic.value}">
+          <div class="no-active-users">✨ loading...</div>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+
+    // ============================================
+    // ACTIVE USERS WITH 15 SECOND REFRESH
+    // ============================================
+    let activeUsersSocket = null;
+    let refreshInterval = null;
+    let isFirstLoad = true;
+
+    function connectActiveUsersSocket() {
+      const tabSessionId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
       
-      if (matchCount >= 2 && isGuest && !hasEmail && !sessionStorage.getItem('emailBannerDismissed')) {
-        banner.classList.add('show');
+      activeUsersSocket = io(BACKEND_URL, {
+        transports: ['websocket', 'polling'],
+        auth: { token: token, sessionId: tabSessionId }
+      });
+      
+      activeUsersSocket.on('connect', () => {
+        console.log('✅ Connected to active users socket');
+        activeUsersSocket.emit('get-active-users');
+      });
+      
+      activeUsersSocket.on('active-users-data', (data) => {
+        console.log('📊 Received active users data:', data);
+        updateTopicActiveUsers(data.topics);
+        isFirstLoad = false;
+      });
+      
+      activeUsersSocket.on('active-users-update', (data) => {
+        console.log('📊 Received active users update:', data);
+        updateTopicActiveUsers(data.topics);
+      });
+      
+      activeUsersSocket.on('disconnect', () => {
+        console.log('⚠️ Active users socket disconnected');
+      });
+    }
+
+    function updateTopicActiveUsers(topicsData) {
+      for (const [topicId, data] of Object.entries(topicsData)) {
+        const container = document.getElementById(`topic-users-${topicId}`);
+        if (container) {
+          const totalCount = data.count || 0;
+          const avatarEmojis = data.users || [];
+          
+          if (totalCount === 0) {
+            // Show "no active users" message instead of skeleton
+            container.innerHTML = `<div class="no-active-users">😴 no one active</div>`;
+          } else {
+            let avatarsHtml = '<div class="user-avatars">';
+            const displayAvatars = avatarEmojis.slice(0, 5);
+            displayAvatars.forEach((avatar, index) => {
+              avatarsHtml += `
+                <div class="user-avatar-small" style="z-index: ${5 - index}; margin-left: ${index === 0 ? '0' : '-8px'}" title="Active user">
+                  ${avatar}
+                </div>
+              `;
+            });
+            avatarsHtml += '</div>';
+            
+            container.innerHTML = `
+              ${avatarsHtml}
+              <span class="user-count">${totalCount} active</span>
+            `;
+          }
+        }
       }
     }
 
-    // If coming back from chat, increment match count
-    if (sessionStorage.getItem('matchJustCompleted')) {
-      matchCount++;
-      localStorage.setItem('matchCount', matchCount);
-      document.getElementById('matchCountDisplay').innerHTML = `✨ ${matchCount} ${matchCount === 1 ? 'match' : 'matches'} completed`;
-      sessionStorage.removeItem('matchJustCompleted');
-      checkAndShowEmailBanner();
+    // Fallback: Refresh every 15 seconds even if socket doesn't update
+    function startRefreshInterval() {
+      if (refreshInterval) clearInterval(refreshInterval);
+      
+      refreshInterval = setInterval(() => {
+        if (activeUsersSocket && activeUsersSocket.connected) {
+          console.log('🔄 15-second refresh: requesting active users');
+          activeUsersSocket.emit('get-active-users');
+        }
+      }, 15000); // 15 seconds
     }
 
-    checkAndShowEmailBanner();
+    // ============================================
+    // SELECT TOPIC
+    // ============================================
+    function containsProfanity(text) {
+      const lowerText = text.toLowerCase();
+      for (const word of offensiveWords) {
+        if (lowerText.includes(word)) return true;
+      }
+      return false;
+    }
+
+    async function selectTopic(topic, topicName) {
+      const warningDiv = document.getElementById('topicWarning');
+      warningDiv.style.display = 'none';
+      
+      if (containsProfanity(topic)) {
+        warningDiv.innerHTML = `❌ Topic contains offensive content. Please choose a different topic.`;
+        warningDiv.style.display = 'block';
+        return;
+      }
+      
+      localStorage.setItem('selectedTopic', topic);
+      localStorage.setItem('selectedTopicName', topicName || topic);
+      window.location.href = 'chat.html';
+    }
+
+    // ============================================
+    // CUSTOM TOPIC
+    // ============================================
+    const customInput = document.getElementById('customTopic');
+    const startBtn = document.getElementById('startCustomBtn');
+    const warningDiv = document.getElementById('topicWarning');
+
+    async function startWithCustomTopic() {
+      const custom = customInput.value.trim().toLowerCase();
+      warningDiv.style.display = 'none';
+      
+      if (!custom) {
+        warningDiv.innerHTML = 'Please enter a topic';
+        warningDiv.style.display = 'block';
+        return;
+      }
+      
+      if (custom.length > 30) {
+        warningDiv.innerHTML = 'Topic too long (max 30 characters)';
+        warningDiv.style.display = 'block';
+        return;
+      }
+      
+      const allowedRegex = /^[a-zA-Z0-9\s\-_]+$/;
+      if (!allowedRegex.test(custom)) {
+        warningDiv.innerHTML = 'Topic can only contain letters, numbers, spaces, hyphens, and underscores';
+        warningDiv.style.display = 'block';
+        return;
+      }
+      
+      if (containsProfanity(custom)) {
+        warningDiv.innerHTML = `❌ Topic contains offensive content. Please enter a different topic.`;
+        warningDiv.style.display = 'block';
+        customInput.value = '';
+        return;
+      }
+      
+      localStorage.setItem('selectedTopic', custom);
+      localStorage.setItem('selectedTopicName', custom);
+      window.location.href = 'chat.html';
+    }
+
+    startBtn.addEventListener('click', startWithCustomTopic);
+    customInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') startWithCustomTopic();
+    });
 
     // ============================================
     // EDIT PROFILE MODAL
@@ -547,7 +892,6 @@
         document.getElementById('emailBanner').classList.remove('show');
       }
       
-      // Save to backend
       fetch(`${BACKEND_URL}/api/guest/track`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -581,126 +925,104 @@
       if (e.target === document.getElementById('editModal')) closeEditModal();
     });
     
-    // Email banner handlers
-    document.getElementById('addEmailBtn').addEventListener('click', () => {
-      openEditModal();
-    });
-    
+    document.getElementById('addEmailBtn').addEventListener('click', () => openEditModal());
     document.getElementById('closeBannerBtn').addEventListener('click', () => {
       document.getElementById('emailBanner').classList.remove('show');
       sessionStorage.setItem('emailBannerDismissed', 'true');
     });
 
     // ============================================
-    // PROFANITY CHECK FUNCTION
+    // PINNED PARTNERS
     // ============================================
-    function containsProfanity(text) {
-      const lowerText = text.toLowerCase();
-      for (const word of offensiveWords) {
-        if (lowerText.includes(word)) {
-          console.log(`🚫 Blocked word found: "${word}" in "${text}"`);
-          return true;
+    async function loadPinnedPartners() {
+      try {
+        const response = await fetch(`${BACKEND_URL}/auth/pinned/list`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+        if (data.success && data.pinnedPartners.length > 0) {
+          renderPinnedPartners(data.pinnedPartners);
+        } else {
+          document.getElementById('pinnedSection').style.display = 'none';
         }
+      } catch (error) {
+        console.error('Load pinned error:', error);
+        document.getElementById('pinnedSection').style.display = 'none';
       }
-      return false;
     }
 
-    function getOffensiveWord(text) {
-      const lowerText = text.toLowerCase();
-      for (const word of offensiveWords) {
-        if (lowerText.includes(word)) return word;
+    function renderPinnedPartners(partners) {
+      const section = document.getElementById('pinnedSection');
+      const grid = document.getElementById('pinnedGrid');
+      const countSpan = document.getElementById('pinnedCount');
+      
+      if (!partners || partners.length === 0) {
+        section.style.display = 'none';
+        return;
       }
-      return null;
+      
+      section.style.display = 'block';
+      countSpan.textContent = partners.length;
+      
+      grid.innerHTML = partners.map(partner => `
+        <div class="pinned-card" data-partner-id="${partner.partnerId}">
+          <button class="unpin-btn" onclick="unpinPartner('${partner.partnerId}', event)">✕</button>
+          <div class="pinned-avatar">${partner.avatar || '🦊'}</div>
+          <div class="pinned-name">${escapeHtml(partner.name)}</div>
+          <div class="pinned-topic">🎯 ${partner.topic || 'General'}</div>
+          <div class="pinned-date">${formatDate(partner.pinnedAt)}</div>
+        </div>
+      `).join('');
+      
+      document.querySelectorAll('.pinned-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+          if (!e.target.classList.contains('unpin-btn')) {
+            const partnerId = card.dataset.partnerId;
+            const partnerName = card.querySelector('.pinned-name').textContent;
+            if (confirm(`Start a chat with ${partnerName}?`)) {
+              localStorage.setItem('preferredPartner', partnerId);
+              window.location.href = 'chat.html';
+            }
+          }
+        });
+      });
+    }
+
+    window.unpinPartner = async function(partnerId, event) {
+      event.stopPropagation();
+      try {
+        const response = await fetch(`${BACKEND_URL}/auth/pinned/remove`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ partnerId })
+        });
+        const data = await response.json();
+        if (data.success) loadPinnedPartners();
+      } catch (error) { console.error('Unpin error:', error); }
+    };
+
+    function formatDate(dateString) {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+      if (diffDays === 0) return 'Today';
+      if (diffDays === 1) return 'Yesterday';
+      if (diffDays < 7) return `${diffDays} days ago`;
+      return date.toLocaleDateString();
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
     }
 
     // ============================================
-    // SELECT TOPIC FUNCTION
+    // INITIALIZE
     // ============================================
-    async function selectTopic(topic, topicName) {
-      const warningDiv = document.getElementById('topicWarning');
-      warningDiv.style.display = 'none';
-      
-      if (containsProfanity(topic)) {
-        const badWord = getOffensiveWord(topic);
-        warningDiv.innerHTML = `❌ Topic contains offensive word: "${badWord}". Please choose a different topic.`;
-        warningDiv.style.display = 'block';
-        return;
-      }
-      
-      localStorage.setItem('selectedTopic', topic);
-      localStorage.setItem('selectedTopicName', topicName || topic);
-      window.location.href = 'chat.html';
-    }
-
-    // Render topics grid
-    const grid = document.getElementById('topicsGrid');
-    topics.forEach(topic => {
-      const card = document.createElement('div');
-      card.className = 'topic-card';
-      card.onclick = () => selectTopic(topic.value, topic.name);
-      card.innerHTML = `
-        <span class="topic-emoji">${topic.emoji}</span>
-        <div class="topic-name">${topic.name}</div>
-      `;
-      grid.appendChild(card);
-    });
-
-    // ============================================
-    // CUSTOM TOPIC FUNCTION
-    // ============================================
-    const customInput = document.getElementById('customTopic');
-    const startBtn = document.getElementById('startCustomBtn');
-    const warningDiv = document.getElementById('topicWarning');
-    const loadingDiv = document.getElementById('topicLoading');
-
-    async function startWithCustomTopic() {
-      const custom = customInput.value.trim().toLowerCase();
-      
-      warningDiv.style.display = 'none';
-      
-      if (!custom) {
-        warningDiv.innerHTML = 'Please enter a topic';
-        warningDiv.style.display = 'block';
-        return;
-      }
-      
-      if (custom.length > 30) {
-        warningDiv.innerHTML = 'Topic too long (max 30 characters)';
-        warningDiv.style.display = 'block';
-        return;
-      }
-      
-      const allowedRegex = /^[a-zA-Z0-9\s\-_]+$/;
-      if (!allowedRegex.test(custom)) {
-        warningDiv.innerHTML = 'Topic can only contain letters, numbers, spaces, hyphens, and underscores';
-        warningDiv.style.display = 'block';
-        return;
-      }
-      
-      if (containsProfanity(custom)) {
-        const badWord = getOffensiveWord(custom);
-        warningDiv.innerHTML = `❌ Topic contains offensive word: "${badWord}". Please enter a different topic.`;
-        warningDiv.style.display = 'block';
-        customInput.value = '';
-        return;
-      }
-      
-      if (offensiveWords.includes(custom)) {
-        warningDiv.innerHTML = `❌ Offensive word "${custom}" is not allowed as a topic.`;
-        warningDiv.style.display = 'block';
-        customInput.value = '';
-        return;
-      }
-      
-      localStorage.setItem('selectedTopic', custom);
-      localStorage.setItem('selectedTopicName', custom);
-      window.location.href = 'chat.html';
-    }
-
-    startBtn.addEventListener('click', startWithCustomTopic);
-    customInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') startWithCustomTopic();
-    });
+    connectActiveUsersSocket();
+    startRefreshInterval();
+    loadPinnedPartners();
   </script>
 </body>
 </html>

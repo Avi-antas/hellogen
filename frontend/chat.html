@@ -138,7 +138,7 @@
     }
 
     /* ============================================
-       STATUS INDICATOR (Auto-hide after 2s)
+       STATUS INDICATOR
     ============================================ */
     .status-indicator {
       position: fixed;
@@ -166,7 +166,7 @@
     }
 
     /* ============================================
-       TOPIC BADGE (Top Center)
+       TOPIC BADGE
     ============================================ */
     .topic-badge {
       position: fixed;
@@ -286,6 +286,67 @@
       50% {
         transform: scale(1.08);
         box-shadow: 0 0 0 15px rgba(255, 71, 87, 0);
+      }
+    }
+
+    /* ============================================
+       PIN BUTTON - FIXED POSITION
+    ============================================ */
+    .pin-btn {
+      position: fixed;
+      bottom: 120px;
+      right: 90px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #f39c12, #e67e22);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 24px;
+      z-index: 15;
+      box-shadow: 0 0 15px rgba(243, 156, 18, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    .pin-btn.visible {
+      display: flex;
+    }
+
+    .pin-btn:hover {
+      transform: scale(1.1);
+      background: linear-gradient(135deg, #e67e22, #d35400);
+    }
+
+    .pin-btn.pinned {
+      background: linear-gradient(135deg, #2ed573, #26a65b);
+    }
+
+    .pin-toast {
+      position: fixed;
+      bottom: 200px;
+      right: 20px;
+      background: rgba(46, 213, 115, 0.95);
+      color: white;
+      padding: 10px 16px;
+      border-radius: 40px;
+      font-size: 12px;
+      z-index: 1000;
+      animation: slideInRight 0.3s ease;
+    }
+
+    @keyframes slideInRight {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateX(0);
+        opacity: 1;
       }
     }
 
@@ -751,149 +812,62 @@
       color: white;
     }
 
-    /* ============================================
-       EXTRA ADDED STYLES
-    ============================================ */
-    
-    /* Smooth transitions for all interactive elements */
-    button, .control-btn, .red-flag-btn, .cancel-queue-btn, .topic-card {
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    
-    /* Glow effect for active connections */
-    @keyframes connectedGlow {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(46, 213, 115, 0.4); }
-      50% { box-shadow: 0 0 0 20px rgba(46, 213, 115, 0); }
-    }
-    
-    /* Pulse animation for incoming calls */
-    @keyframes incomingPulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-    }
-    
-    /* Shake animation for warnings */
-    @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-5px); }
-      75% { transform: translateX(5px); }
-    }
-    
-    .shake {
-      animation: shake 0.3s ease;
-    }
-    
-    /* Fade in for modals */
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    
-    /* Scale pop for badges */
-    @keyframes scalePop {
-      0% { transform: scale(0.8); opacity: 0; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    
-    /* Responsive adjustments */
     @media (max-width: 768px) {
       .control-btn {
         width: 48px;
         height: 48px;
         font-size: 20px;
       }
-      
+
       .controls {
         gap: 20px;
         padding: 10px 20px;
       }
-      
+
       .avatar-circle {
         width: 75px;
         height: 75px;
         font-size: 38px;
       }
-      
+
       .avatars-container {
         gap: 20px;
       }
-      
+
       .topic-pill {
         font-size: 14px;
         padding: 6px 18px;
       }
-      
+
       .match-status {
         font-size: 22px;
       }
-      
+
       .topic-badge {
         font-size: 11px;
         padding: 6px 14px;
       }
-      
+
       .status-indicator {
         font-size: 11px;
         padding: 6px 14px;
       }
-    }
-    
-    /* Loading spinner animation */
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    
-    /* Ripple effect for buttons */
-    .ripple {
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .ripple:after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 0;
-      height: 0;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.3);
-      transform: translate(-50%, -50%);
-      transition: width 0.6s, height 0.6s;
-    }
-    
-    .ripple:active:after {
-      width: 300px;
-      height: 300px;
-    }
-    
-    /* Custom scrollbar for modals */
-    .report-modal-content::-webkit-scrollbar {
-      width: 6px;
-    }
-    
-    .report-modal-content::-webkit-scrollbar-track {
-      background: #1f1f1f;
-      border-radius: 10px;
-    }
-    
-    .report-modal-content::-webkit-scrollbar-thumb {
-      background: #667eea;
-      border-radius: 10px;
-    }
-    
-    /* Video quality indicator */
-    .video-quality {
-      position: absolute;
-      bottom: 10px;
-      left: 10px;
-      background: rgba(0, 0, 0, 0.6);
-      padding: 2px 8px;
-      border-radius: 20px;
-      font-size: 10px;
-      color: #2ed573;
-      z-index: 5;
-      font-family: monospace;
+
+      .pin-btn {
+        bottom: 190px;
+        right: 65px;
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+      }
+
+      .red-flag-btn {
+        bottom: 190px;
+        right: 15px;
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+      }
     }
   </style>
 </head>
@@ -914,6 +888,7 @@
   </div>
 
   <button class="red-flag-btn" id="redFlagBtn">🚩</button>
+  <button class="pin-btn" id="pinBtn">📌</button>
 
   <div class="status-indicator" id="statusIndicator">Connecting...</div>
   <div class="timer hidden" id="timer"></div>
@@ -959,7 +934,7 @@
     const selectedTopicName = localStorage.getItem('selectedTopicName') || selectedTopic || 'Gaming';
 
     const topicEmojis = {
-      'gaming': '🎮', 'music': '🎵', 'casual': '💬', 'movies': '🎬', 'tech': '💻', 'sports': '⚽'
+      'gaming': '🎮', 'music': '🎵', 'casual': '💬', 'movies': '🎬', 'tech': '💻', 'sports': '⚽', 'cricket': '🏏', 'coding': '💻', 'football': '⚽'
     };
     const topicEmoji = topicEmojis[selectedTopic] || '🎯';
 
@@ -980,6 +955,8 @@
     let pendingIceCandidates = [];
     let isSwitchingPartner = false;
     let statusTimeout = null;
+    let currentPartnerName = '';
+    let currentPartnerAvatar = '';
 
     // Moderation
     let violationCount = 0;
@@ -1010,18 +987,16 @@
       const statusDiv = document.getElementById('statusIndicator');
       statusDiv.textContent = message;
       statusDiv.classList.add('show');
-      
-      // Clear previous timeout
+
       if (statusTimeout) {
         clearTimeout(statusTimeout);
       }
-      
-      // Hide after 2 seconds (or 3 seconds for errors)
+
       const duration = isError ? 3000 : 2000;
       statusTimeout = setTimeout(() => {
         statusDiv.classList.remove('show');
       }, duration);
-      
+
       console.log(`📡 ${message}`);
     }
 
@@ -1124,10 +1099,13 @@
     }
 
     function animateMatchFound(partnerAvatar, partnerName) {
+      currentPartnerAvatar = partnerAvatar;
+      currentPartnerName = partnerName;
+      
       return new Promise((resolve) => {
         const partnerAvatarEl = document.getElementById('partnerAvatarCircle');
         const partnerNameEl = document.getElementById('partnerName');
-        
+
         let statusEl = document.querySelector('.match-status');
         if (!statusEl) {
           statusEl = document.createElement('div');
@@ -1152,6 +1130,11 @@
 
         setTimeout(() => {
           hideMatchOverlay();
+          // ✅ Show pin button after match
+          const pinBtn = document.getElementById('pinBtn');
+          pinBtn.classList.add('visible');
+          pinBtn.classList.remove('pinned');
+          pinBtn.innerHTML = '📌';
           resolve();
         }, 2000);
       });
@@ -1219,6 +1202,58 @@
         scrollToSkipActive = false;
         isSkipping = false;
       };
+    }
+
+    // ============================================
+    // PIN PARTNER FUNCTIONALITY
+    // ============================================
+    async function pinCurrentPartner() {
+      if (!partnerId) {
+        showModerationWarning('No active partner to pin', '#ffa502');
+        return;
+      }
+
+      const partnerInfo = {
+        partnerId: partnerId,
+        partnerName: currentPartnerName || document.getElementById('partnerName')?.textContent || 'Partner',
+        partnerAvatar: currentPartnerAvatar || document.getElementById('partnerAvatarCircle')?.textContent || '🦊',
+        topic: selectedTopicName
+      };
+
+      console.log('📌 Pinning partner:', partnerInfo);
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/auth/pinned/add`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(partnerInfo)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          const pinBtn = document.getElementById('pinBtn');
+          pinBtn.classList.add('pinned');
+          pinBtn.innerHTML = '📌 Pinned';
+          showPinToast(`✨ ${partnerInfo.partnerName} pinned! ✨`);
+        } else {
+          showModerationWarning(result.message || 'Failed to pin', '#ffa502');
+        }
+      } catch (error) {
+        console.error('Pin error:', error);
+        showModerationWarning('Failed to pin partner', '#ff4757');
+      }
+    }
+
+    function showPinToast(message) {
+      const toast = document.createElement('div');
+      toast.className = 'pin-toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
     }
 
     // ============================================
@@ -1361,16 +1396,40 @@
         return;
       }
 
+      const violationType = document.getElementById('violationType').value;
+      const description = document.getElementById('violationDesc').value;
+
+      const reasonMap = {
+        'harassment': 'harassment',
+        'inappropriate': 'nudity',
+        'hate_speech': 'hate-speech',
+        'violence': 'violence',
+        'spam': 'spam',
+        'other': 'other'
+      };
+
       const reportData = {
         reportedUserId: partnerId,
         reporterId: mySocketId,
         isGuest: isGuest,
         topic: selectedTopic,
         violations: violationsList,
-        violationType: document.getElementById('violationType').value,
-        description: document.getElementById('violationDesc').value,
-        timestamp: new Date().toISOString()
+        violationType: reasonMap[violationType] || 'other',
+        description: description || violationsList.map(v => v.message).join(', '),
+        timestamp: new Date().toISOString(),
+        chatSessionId: `${selectedTopic}_${Date.now()}`
       };
+
+      if (isGuest) {
+        try {
+          const ipResponse = await fetch('https://api.ipify.org?format=json');
+          const ipData = await ipResponse.json();
+          reportData.guestIp = ipData.ip;
+        } catch (error) {
+          console.warn('Could not fetch IP:', error);
+          reportData.guestIp = 'unknown';
+        }
+      }
 
       console.log('📤 Submitting report:', reportData);
 
@@ -1381,23 +1440,32 @@
           body: JSON.stringify(reportData)
         });
 
-        if (response.ok) {
-          showModerationWarning('✅ Report submitted! Thank you.', '#2ed573');
+        const result = await response.json();
+
+        if (result.success) {
+          showModerationWarning('✅ Report submitted! Thank you!', '#2ed573');
           document.getElementById('redFlagBtn').classList.remove('visible');
           redFlagShown = false;
           document.getElementById('violationDesc').value = '';
           hideReportModal();
+        } else {
+          throw new Error(result.message || 'Submission failed');
         }
       } catch (error) {
+        console.error('❌ Report submission failed:', error);
         showModerationWarning('📱 Report saved locally', '#ffa502');
         document.getElementById('redFlagBtn').classList.remove('visible');
         redFlagShown = false;
         hideReportModal();
+
+        const reports = JSON.parse(localStorage.getItem('local_reports') || '[]');
+        reports.push(reportData);
+        localStorage.setItem('local_reports', JSON.stringify(reports));
       }
     }
 
     // ============================================
-    // AI MODERATION
+    // AI MODERATION (Simplified)
     // ============================================
     async function startAudioMonitoring() {
       if (audioMonitoringActive) return;
@@ -1527,8 +1595,12 @@
       redFlagShown = false;
       matchCountIncremented = false;
       pendingIceCandidates = [];
+      currentPartnerName = '';
+      currentPartnerAvatar = '';
       document.getElementById('redFlagBtn').classList.remove('visible');
       document.getElementById('topicBadge').classList.remove('visible');
+      document.getElementById('pinBtn').classList.remove('visible');
+      document.getElementById('pinBtn').classList.remove('pinned');
       updateViolationCounter();
 
       const remoteVideo = document.getElementById('remoteVideo');
@@ -1618,19 +1690,50 @@
     }
 
     function startGuestTimer() {
+      if (!isGuest) {
+        console.log('Auth user - no timer needed');
+        return;
+      }
+
+      console.log('Guest user - starting 5 min timer');
       let timeLeft = 300;
       const timerEl = document.getElementById('timer');
       timerEl.classList.remove('hidden');
+
       guestTimerInterval = setInterval(() => {
         timeLeft--;
         const minutes = Math.floor(timeLeft / 60);
         const seconds = timeLeft % 60;
-        timerEl.textContent = `⏱️ ${minutes}:${seconds.toString().padStart(2, '0')}`;
-        if (timeLeft <= 60) timerEl.classList.add('warning');
+        timerEl.textContent = `⏱️ Guest: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+        if (timeLeft <= 60) {
+          timerEl.classList.add('warning');
+        }
+
         if (timeLeft <= 0) {
           clearInterval(guestTimerInterval);
-          alert('Guest session expired. Sign up to continue!');
-          window.location.href = './index.html';
+          console.log('⏰ Guest timer expired - disconnecting...');
+          showModerationWarning('⏰ Guest session expired! Redirecting...', '#ff4757');
+
+          stopAIModeration();
+          if (window.cleanupScrollToSkip) window.cleanupScrollToSkip();
+
+          const remoteVideo = document.getElementById('remoteVideo');
+          if (remoteVideo && remoteVideo.srcObject) {
+            const tracks = remoteVideo.srcObject.getTracks();
+            tracks.forEach(track => track.stop());
+            remoteVideo.srcObject = null;
+          }
+
+          cleanup();
+          if (socket && socket.connected) {
+            socket.emit("next");
+          }
+
+          setTimeout(() => {
+            alert('Guest session expired. Please sign up to continue!');
+            window.location.href = './topics.html';
+          }, 1500);
         }
       }, 1000);
     }
@@ -1815,6 +1918,7 @@
     document.getElementById('redFlagBtn').onclick = showReportModal;
     document.getElementById('submitReportBtn').onclick = submitReport;
     document.getElementById('closeModalBtn').onclick = hideReportModal;
+    document.getElementById('pinBtn').onclick = pinCurrentPartner;
 
     window.onclick = (e) => {
       if (e.target === document.getElementById('reportModal')) hideReportModal();
