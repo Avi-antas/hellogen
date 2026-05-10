@@ -79,6 +79,7 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
+      transform: rotateY(180deg);
     }
 
     #localVideo {
@@ -1099,47 +1100,58 @@
     }
 
     function animateMatchFound(partnerAvatar, partnerName) {
-      currentPartnerAvatar = partnerAvatar;
-      currentPartnerName = partnerName;
-      
-      return new Promise((resolve) => {
-        const partnerAvatarEl = document.getElementById('partnerAvatarCircle');
-        const partnerNameEl = document.getElementById('partnerName');
+  currentPartnerAvatar = partnerAvatar;
+  currentPartnerName = partnerName;
+  
+  return new Promise((resolve) => {
+    const partnerAvatarEl = document.getElementById('partnerAvatarCircle');
+    const partnerNameEl = document.getElementById('partnerName');
 
-        let statusEl = document.querySelector('.match-status');
-        if (!statusEl) {
-          statusEl = document.createElement('div');
-          statusEl.className = 'match-status';
-          matchOverlayElement?.querySelector('.match-container')?.insertBefore(statusEl, matchOverlayElement.querySelector('.searching-text'));
-        }
-
-        if (partnerAvatarEl) {
-          partnerAvatarEl.textContent = partnerAvatar;
-          partnerNameEl.textContent = partnerName;
-          partnerAvatarEl.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
-          partnerAvatarEl.style.animation = 'none';
-        }
-
-        statusEl.textContent = '✨ MATCHED! ✨';
-        statusEl.style.color = '#2ed573';
-
-        if (matchOverlayElement) matchOverlayElement.classList.add('matched');
-
-        const dotsContainer = document.querySelector('.animated-dots');
-        if (dotsContainer) dotsContainer.innerHTML = 'Connecting';
-
-        setTimeout(() => {
-          hideMatchOverlay();
-          // ✅ Show pin button after match
-          const pinBtn = document.getElementById('pinBtn');
-          pinBtn.classList.add('visible');
-          pinBtn.classList.remove('pinned');
-          pinBtn.innerHTML = '📌';
-          resolve();
-        }, 2000);
-      });
+    let statusEl = document.querySelector('.match-status');
+    if (!statusEl) {
+      statusEl = document.createElement('div');
+      statusEl.className = 'match-status';
+      matchOverlayElement?.querySelector('.match-container')?.insertBefore(statusEl, matchOverlayElement.querySelector('.searching-text'));
     }
 
+    if (partnerAvatarEl) {
+      partnerAvatarEl.textContent = partnerAvatar;
+      partnerNameEl.textContent = partnerName;
+      partnerAvatarEl.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
+      partnerAvatarEl.style.animation = 'none';
+    }
+
+    statusEl.textContent = '✨ MATCHED! ✨';
+    statusEl.style.color = '#2ed573';
+
+    if (matchOverlayElement) matchOverlayElement.classList.add('matched');
+
+    const dotsContainer = document.querySelector('.animated-dots');
+    if (dotsContainer) dotsContainer.innerHTML = 'Connecting';
+
+    setTimeout(() => {
+      hideMatchOverlay();
+      
+      // ✅ SHOW/HIDE PIN BUTTON BASED ON USER TYPE
+      const isGuest = localStorage.getItem('isGuest') === 'true';
+      const pinBtn = document.getElementById('pinBtn');
+      
+      if (!isGuest) {
+        // Only show pin button for auth users
+        pinBtn.classList.add('visible');
+        pinBtn.classList.remove('pinned');
+        pinBtn.innerHTML = '📌';
+        console.log('✅ Pin button shown for auth user');
+      } else {
+        // Hide pin button for guests
+        pinBtn.classList.remove('visible');
+        console.log('❌ Pin button hidden for guest user');
+      }
+      
+      resolve();
+    }, 2000);
+  });
+}
     // ============================================
     // SCROLL TO SKIP HANDLER
     // ============================================
@@ -1601,6 +1613,12 @@
       document.getElementById('topicBadge').classList.remove('visible');
       document.getElementById('pinBtn').classList.remove('visible');
       document.getElementById('pinBtn').classList.remove('pinned');
+
+       // ✅ Hide pin button when resetting
+  const pinBtn = document.getElementById('pinBtn');
+  pinBtn.classList.remove('visible');
+  pinBtn.classList.remove('pinned');
+  
       updateViolationCounter();
 
       const remoteVideo = document.getElementById('remoteVideo');
@@ -1833,35 +1851,46 @@
       });
 
       socket.on('matched', async (id, topic, partnerInfo) => {
-        console.log('🎯 Matched with', id, partnerInfo);
-        partnerId = id;
-        isMatched = true;
-        incrementMatchCount();
+  console.log('🎯 Matched with', id, partnerInfo);
+  partnerId = id;
+  isMatched = true;
+  incrementMatchCount();
 
-        const partnerAvatar = partnerInfo?.avatar || '🦊';
-        const partnerName = partnerInfo?.name || 'Partner';
+  const partnerAvatar = partnerInfo?.avatar || '🦊';
+  const partnerName = partnerInfo?.name || 'Partner';
 
-        await animateMatchFound(partnerAvatar, partnerName);
+  await animateMatchFound(partnerAvatar, partnerName);
 
-        updateStatus('Connected!', false);
+  updateStatus('Connected!', false);
 
-        document.getElementById('localVideoWrapper').classList.remove('local-fullscreen');
-        document.getElementById('localVideoWrapper').classList.add('local-video');
+  document.getElementById('localVideoWrapper').classList.remove('local-fullscreen');
+  document.getElementById('localVideoWrapper').classList.add('local-video');
 
-        const remoteVideo = document.getElementById('remoteVideo');
-        if (remoteVideo && remoteVideo.srcObject) {
-          const tracks = remoteVideo.srcObject.getTracks();
-          tracks.forEach(track => track.stop());
-          remoteVideo.srcObject = null;
-        }
+  const remoteVideo = document.getElementById('remoteVideo');
+  if (remoteVideo && remoteVideo.srcObject) {
+    const tracks = remoteVideo.srcObject.getTracks();
+    tracks.forEach(track => track.stop());
+    remoteVideo.srcObject = null;
+  }
 
-        const isInitiator = mySocketId < partnerId;
-        createPeer(isInitiator);
-        startAIModeration();
+  const isInitiator = mySocketId < partnerId;
+  createPeer(isInitiator);
+  startAIModeration();
 
-        setTimeout(() => initScrollToSkip(), 2000);
-      });
+  // ✅ OR ADD PIN BUTTON LOGIC HERE (if not already in animateMatchFound)
+  const isGuest = localStorage.getItem('isGuest') === 'true';
+  const pinBtn = document.getElementById('pinBtn');
+  
+  if (!isGuest) {
+    pinBtn.classList.add('visible');
+    pinBtn.classList.remove('pinned');
+    pinBtn.innerHTML = '📌';
+  } else {
+    pinBtn.classList.remove('visible');
+  }
 
+  setTimeout(() => initScrollToSkip(), 2000);
+});
       socket.on('partner-disconnected', () => {
         console.log('Partner disconnected');
         updateStatus('Partner left. Finding new partner...', false);
